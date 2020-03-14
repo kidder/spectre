@@ -11,6 +11,7 @@
 #include <deque>
 #include <initializer_list>
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "ErrorHandling/Assert.hpp"
 #include "Parallel/PupStlCpp11.hpp"
 #include "Time/BoundaryHistory.hpp"
@@ -23,7 +24,6 @@
 #include "Utilities/ForceInline.hpp"
 #include "Utilities/Gsl.hpp"
 #include "Utilities/Literals.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "tests/Unit/TestCreation.hpp"
 #include "tests/Unit/TestHelpers.hpp"
 #include "tests/Unit/Time/TimeSteppers/TimeStepperTestUtils.hpp"

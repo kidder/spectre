@@ -8,9 +8,9 @@
 
 #include <cstddef>
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "ErrorHandling/Assert.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 /// \ingroup NumericalAlgorithmsGroup
 /// \brief Function to compute transposed data.

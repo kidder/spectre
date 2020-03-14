@@ -6,12 +6,12 @@
 #include <cmath>
 #include <pup.h>
 
-#include "DataStructures/DataVector.hpp"     // IWYU pragma: keep
+#include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/DereferenceWrapper.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 namespace domain {
 namespace CoordinateMaps {

@@ -8,9 +8,9 @@
 #include <utility>
 
 #include "DataStructures/DenseVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "Options/Options.hpp"
 #include "Options/ParseOptions.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 #include "tests/Unit/TestHelpers.hpp"
 

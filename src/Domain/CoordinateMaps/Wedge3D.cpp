@@ -7,6 +7,7 @@
 #include <cmath>
 #include <pup.h>
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/OrientationMap.hpp"
 #include "Domain/SegmentId.hpp"  // IWYU pragma: keep
@@ -16,7 +17,6 @@
 #include "Utilities/DereferenceWrapper.hpp"
 #include "Utilities/EqualWithinRoundoff.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 namespace domain {
 namespace CoordinateMaps {

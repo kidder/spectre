@@ -25,7 +25,6 @@ set(LIBRARY_SOURCES
   Test_MakeSignalingNan.cpp
   Test_MakeString.cpp
   Test_MakeVector.cpp
-  Test_MakeWithValue.cpp
   Test_Math.cpp
   Test_Numeric.cpp
   Test_Overloader.cpp

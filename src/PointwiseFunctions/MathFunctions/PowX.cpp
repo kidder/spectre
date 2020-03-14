@@ -4,7 +4,7 @@
 #include "PointwiseFunctions/MathFunctions/PowX.hpp"
 
 #include "DataStructures/DataVector.hpp"
-#include "Utilities/MakeWithValue.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 
 namespace MathFunctions {
 

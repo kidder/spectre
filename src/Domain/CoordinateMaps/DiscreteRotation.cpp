@@ -3,13 +3,13 @@
 
 #include "Domain/CoordinateMaps/DiscreteRotation.hpp"
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "Domain/Direction.hpp"
 #include "Domain/OrientationMap.hpp"
 #include "Domain/Side.hpp"
 #include "Utilities/DereferenceWrapper.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 namespace domain {
 namespace CoordinateMaps {

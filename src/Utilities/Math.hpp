@@ -8,8 +8,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "Utilities/ForceInline.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/Requires.hpp"
 #include "Utilities/TypeTraits.hpp"
 #include "Utilities/TypeTraits/IsA.hpp"

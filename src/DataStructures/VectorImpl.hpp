@@ -16,10 +16,10 @@
 #include <pup.h>
 #include <type_traits>
 
+#include "DataStructures/MakeWithValue.hpp"  // IWYU pragma: keep
 #include "ErrorHandling/Assert.hpp"
 #include "Utilities/ForceInline.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"  // IWYU pragma: keep
 #include "Utilities/PointerVector.hpp"  // IWYU pragma: keep
 #include "Utilities/PrintHelpers.hpp"
 #include "Utilities/Requires.hpp"

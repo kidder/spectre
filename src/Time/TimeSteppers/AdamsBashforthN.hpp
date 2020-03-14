@@ -18,6 +18,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "ErrorHandling/Assert.hpp"
 #include "ErrorHandling/Error.hpp"
 #include "NumericalAlgorithms/Interpolation/LagrangePolynomial.hpp"
@@ -30,7 +31,6 @@
 #include "Utilities/CachedFunction.hpp"
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/Overloader.hpp"
 #include "Utilities/TMPL.hpp"
 

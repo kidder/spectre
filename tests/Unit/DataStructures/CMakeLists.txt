@@ -21,6 +21,7 @@ set(LIBRARY_SOURCES
   Test_Index.cpp
   Test_IndexIterator.cpp
   Test_LeviCivitaIterator.cpp
+  Test_MakeWithValue.cpp
   Test_ModalVector.cpp
   Test_ModalVectorInhomogeneousOperations.cpp
   Test_MoreComplexDiagonalModalOperatorMath.cpp

@@ -3,10 +3,10 @@
 
 #include "PointwiseFunctions/GeneralRelativity/Christoffel.hpp"
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 /// \cond
 namespace gr {

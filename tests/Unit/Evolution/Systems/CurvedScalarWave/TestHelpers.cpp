@@ -4,9 +4,9 @@
 #include "tests/Unit/Evolution/Systems/CurvedScalarWave/TestHelpers.hpp"
 
 #include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 template <typename DataType>
 Scalar<DataType> make_pi(const DataType& used_for_size) {

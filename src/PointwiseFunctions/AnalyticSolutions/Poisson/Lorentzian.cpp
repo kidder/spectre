@@ -6,11 +6,11 @@
 #include <array>
 
 #include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/DotProduct.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "NumericalAlgorithms/LinearOperators/PartialDerivatives.hpp"
 #include "Utilities/ConstantExpressions.hpp"
-#include "Utilities/MakeWithValue.hpp"
 // IWYU pragma: no_forward_declare Tensor
 
 namespace Poisson {

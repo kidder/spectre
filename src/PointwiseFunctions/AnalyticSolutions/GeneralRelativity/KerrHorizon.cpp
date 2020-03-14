@@ -5,10 +5,10 @@
 
 #include <cmath>
 
-#include "DataStructures/DataVector.hpp"                 // IWYU pragma: keep
-#include "DataStructures/Tensor/EagerMath/Magnitude.hpp" // IWYU pragma: keep
+#include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
+#include "DataStructures/Tensor/EagerMath/Magnitude.hpp"  // IWYU pragma: keep
 #include "Utilities/ConstantExpressions.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/StdArrayHelpers.hpp"
 
 namespace gr {
