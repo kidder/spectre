@@ -7,6 +7,7 @@
 #include <cmath>
 #include <pup.h>
 
+#include "DataStructures/DataVector.hpp"
 #include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/OrientationMap.hpp"

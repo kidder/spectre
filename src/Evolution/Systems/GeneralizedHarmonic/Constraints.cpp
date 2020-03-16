@@ -5,6 +5,7 @@
 
 #include <cstddef>
 
+#include "DataStructures/DataVector.hpp"
 #include "DataStructures/LeviCivitaIterator.hpp"
 #include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep

@@ -6,6 +6,7 @@
 #include <cmath>  // IWYU pragma: keep
 #include <pup.h>
 
+#include "DataStructures/DataVector.hpp"
 #include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/SegmentId.hpp"  // IWYU pragma: keep

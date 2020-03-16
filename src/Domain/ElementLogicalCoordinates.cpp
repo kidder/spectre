@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "DataStructures/DataVector.hpp"
 #include "DataStructures/IdPair.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "DataStructures/Tensor/TypeAliases.hpp"

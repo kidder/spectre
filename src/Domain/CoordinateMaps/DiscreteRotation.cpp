@@ -3,6 +3,7 @@
 
 #include "Domain/CoordinateMaps/DiscreteRotation.hpp"
 
+#include "DataStructures/DataVector.hpp"
 #include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "Domain/Direction.hpp"

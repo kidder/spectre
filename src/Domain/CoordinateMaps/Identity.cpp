@@ -3,6 +3,7 @@
 
 #include "Domain/CoordinateMaps/Identity.hpp"
 
+#include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/Identity.hpp"
 #include "Utilities/DereferenceWrapper.hpp"
 #include "Utilities/GenerateInstantiations.hpp"

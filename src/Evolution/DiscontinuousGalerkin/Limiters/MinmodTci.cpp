@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 
+#include "DataStructures/DataVector.hpp"
 #include "Domain/Element.hpp"  // IWYU pragma: keep
 #include "Domain/Side.hpp"
 #include "Evolution/DiscontinuousGalerkin/Limiters/MinmodHelpers.hpp"

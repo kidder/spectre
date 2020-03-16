@@ -9,6 +9,7 @@
 #include <cmath>
 #include <limits>
 
+#include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Evolution/Systems/GrMhd/ValenciaDivClean/PrimitiveRecoveryData.hpp"
 #include "Utilities/ConstantExpressions.hpp"

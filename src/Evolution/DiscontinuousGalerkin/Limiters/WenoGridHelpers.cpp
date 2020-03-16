@@ -3,6 +3,7 @@
 
 #include "Evolution/DiscontinuousGalerkin/Limiters/WenoGridHelpers.hpp"
 
+#include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/Direction.hpp"  // IWYU pragma: keep
 #include "Domain/Element.hpp"    // IWYU pragma: keep

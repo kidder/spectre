@@ -10,6 +10,7 @@
 
 #include "ApparentHorizons/SpherepackIterator.hpp"
 #include "ErrorHandling/Assert.hpp"
+#include "Parallel/PupStlCpp11.hpp"
 #include "Utilities/StdArrayHelpers.hpp"
 /// \cond
 namespace Frame {

@@ -3,6 +3,7 @@
 
 #include "PointwiseFunctions/Elasticity/ConstitutiveRelations/ConstitutiveRelation.hpp"
 
+#include "DataStructures/DataVector.hpp"
 #include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "Utilities/GenerateInstantiations.hpp"

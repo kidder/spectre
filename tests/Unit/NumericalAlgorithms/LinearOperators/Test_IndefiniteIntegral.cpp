@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 
+#include "DataStructures/ComplexDataVector.hpp"
 #include "DataStructures/DataVector.hpp"
 #include "DataStructures/StripeIterator.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"

@@ -11,6 +11,7 @@
 
 #include "DataStructures/DataVector.hpp"
 #include "ErrorHandling/Error.hpp"
+#include "Parallel/PupStlCpp11.hpp"
 #include "Utilities/EqualWithinRoundoff.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
