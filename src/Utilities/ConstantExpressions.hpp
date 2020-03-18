@@ -16,7 +16,6 @@
 #include <initializer_list>
 #include <utility>
 
-#include "DataStructures/MakeWithValue.hpp"
 #include "Utilities/ForceInline.hpp"
 #include "Utilities/Requires.hpp"
 #include "Utilities/TMPL.hpp"
