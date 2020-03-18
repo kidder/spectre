@@ -54,20 +54,11 @@ void test_euclidean_magnitude() {
         {{minus_three, twelve, four}}};
     CHECK_ITERABLE_APPROX(get(magnitude(three_d_covector)),
                           (DataVector{npts, 13.0}));
-
-    const tnsr::a<DataVector, 4, Frame::Grid> five_d_covector{
-        {{two, twelve, four, one, two}}};
-    CHECK_ITERABLE_APPROX(get(magnitude(five_d_covector)),
-                          (DataVector{npts, 13.0}));
   }
   // Check case for doubles
   {
     const tnsr::i<double, 1, Frame::Grid> one_d_covector_double{{{2.}}};
     CHECK(get(magnitude(one_d_covector_double)) == 2.);
-
-    const tnsr::a<double, 4, Frame::Grid> five_d_covector_double{
-        {{2, 12, 4, 1, 2}}};
-    CHECK(get(magnitude(five_d_covector_double)) == 13.);
   }
 }
 

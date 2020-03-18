@@ -9,6 +9,7 @@ set(LIBRARY_SOURCES
   LeviCivitaIterator.cpp
   SliceIterator.cpp
   StripeIterator.cpp
+  Tensor/EagerMath/DotProduct.cpp
   Tensor/EagerMath/OrthonormalOneform.cpp
   Tensor/TensorData.cpp
   )

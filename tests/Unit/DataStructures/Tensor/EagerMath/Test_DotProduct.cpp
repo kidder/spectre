@@ -1,3 +1,4 @@
+
 // Distributed under the MIT License.
 // See LICENSE.txt for details.
 
@@ -71,20 +72,6 @@ SPECTRE_TEST_CASE("Unit.DataStructures.Tensor.EagerMath.EuclideanDotProduct",
     CHECK_ITERABLE_APPROX(
         get(dot_product(three_d_covector_a, three_d_vector_b)),
         DataVector(npts, -64.0));
-
-    // 5D example
-    const tnsr::a<DataVector, 4, Frame::Grid> five_d_covector_a{
-        {{two, twelve, four, one, two}}};
-    const tnsr::a<DataVector, 4, Frame::Grid> five_d_covector_b{
-        {{minus_five, minus_three, two, four, one}}};
-    const tnsr::A<DataVector, 4, Frame::Grid> five_d_vector_b{
-        {{minus_five, minus_three, two, four, one}}};
-    CHECK_ITERABLE_APPROX(
-        get(dot_product(five_d_covector_a, five_d_covector_b)),
-        DataVector(npts, -32.0));
-    CHECK_ITERABLE_APPROX(
-        get(dot_product(five_d_covector_a, five_d_vector_b)),
-        DataVector(npts, -32.0));
   }
   // Check case for doubles
   {
@@ -95,17 +82,6 @@ SPECTRE_TEST_CASE("Unit.DataStructures.Tensor.EagerMath.EuclideanDotProduct",
           8.0);
     CHECK(get(dot_product(one_d_covector_double_a, one_d_vector_double_b)) ==
           8.0);
-
-    const tnsr::a<double, 4, Frame::Grid> five_d_covector_double_a{
-        {{2.0, 12.0, 4.0, 1.0, 2.0}}};
-    const tnsr::a<double, 4, Frame::Grid> five_d_covector_double_b{
-        {{4.0, 2.0, -4.0, 3.0, 5.0}}};
-    const tnsr::A<double, 4, Frame::Grid> five_d_vector_double_b{
-        {{4.0, 2.0, -4.0, 3.0, 5.0}}};
-    CHECK(get(dot_product(five_d_covector_double_a,
-                          five_d_covector_double_b)) == 29.0);
-    CHECK(get(dot_product(five_d_covector_double_a,
-                          five_d_vector_double_b)) == 29.0);
   }
 }
 
