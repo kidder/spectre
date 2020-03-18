@@ -6,13 +6,12 @@
 #include <cstddef>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
+#include "Utilities/Gsl.hpp"
 
 /// \cond
-template <typename X, typename Symm, typename IndexList>
-class Tensor;
-
 template <typename DataType, typename Index0, typename Index1>
 void raise_or_lower_first_index(
     const gsl::not_null<
@@ -38,6 +37,23 @@ void raise_or_lower_first_index(
   }
 }
 
+template <typename DataType, typename Index0, typename Index1>
+Tensor<DataType, Symmetry<2, 1, 1>,
+       index_list<change_index_up_lo<Index0>, Index1, Index1>>
+raise_or_lower_first_index(
+    const Tensor<DataType, Symmetry<2, 1, 1>,
+                 index_list<Index0, Index1, Index1>>& tensor,
+    const Tensor<DataType, Symmetry<1, 1>,
+                 index_list<change_index_up_lo<Index0>,
+                            change_index_up_lo<Index0>>>& metric) noexcept {
+  auto result = make_with_value<
+      Tensor<DataType, Symmetry<2, 1, 1>,
+             index_list<change_index_up_lo<Index0>, Index1, Index1>>>(metric,
+                                                                      0.);
+  raise_or_lower_first_index(make_not_null(&result), tensor, metric);
+  return result;
+}
+
 template <typename DataType, typename Index0>
 void raise_or_lower_index(
     const gsl::not_null<
@@ -55,6 +71,20 @@ void raise_or_lower_index(
       result->get(i) += tensor.get(m) * metric.get(i, m);
     }
   }
+}
+
+template <typename DataType, typename Index0>
+Tensor<DataType, Symmetry<1>, index_list<change_index_up_lo<Index0>>>
+raise_or_lower_index(
+    const Tensor<DataType, Symmetry<1>, index_list<Index0>>& tensor,
+    const Tensor<DataType, Symmetry<1, 1>,
+                 index_list<change_index_up_lo<Index0>,
+                            change_index_up_lo<Index0>>>& metric) noexcept {
+  auto result = make_with_value<
+      Tensor<DataType, Symmetry<1>, index_list<change_index_up_lo<Index0>>>>(
+      metric, 0.);
+  raise_or_lower_index(make_not_null(&result), tensor, metric);
+  return result;
 }
 
 template <typename DataType, typename Index0, typename Index1>
@@ -81,6 +111,20 @@ void trace_last_indices(
   }
 }
 
+template <typename DataType, typename Index0, typename Index1>
+Tensor<DataType, Symmetry<1>, index_list<Index0>> trace_last_indices(
+    const Tensor<DataType, Symmetry<2, 1, 1>,
+                 index_list<Index0, Index1, Index1>>& tensor,
+    const Tensor<DataType, Symmetry<1, 1>,
+                 index_list<change_index_up_lo<Index1>,
+                            change_index_up_lo<Index1>>>& metric) noexcept {
+  auto trace_of_tensor =
+      make_with_value<Tensor<DataType, Symmetry<1>, index_list<Index0>>>(metric,
+                                                                         0.);
+  trace_last_indices(make_not_null(&trace_of_tensor), tensor, metric);
+  return trace_of_tensor;
+}
+
 template <typename DataType, typename Index0>
 void trace(
     const gsl::not_null<Scalar<DataType>*> trace,
@@ -100,6 +144,17 @@ void trace(
   }
 }
 
+template <typename DataType, typename Index0>
+Scalar<DataType> trace(
+    const Tensor<DataType, Symmetry<1, 1>, index_list<Index0, Index0>>& tensor,
+    const Tensor<DataType, Symmetry<1, 1>,
+                 index_list<change_index_up_lo<Index0>,
+                            change_index_up_lo<Index0>>>& metric) noexcept {
+  Scalar<DataType> trace{};
+  ::trace(make_not_null(&trace), tensor, metric);
+  return trace;
+}
+
 #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
 #define DTYPE(data) BOOST_PP_TUPLE_ELEM(1, data)
 #define FRAME(data) BOOST_PP_TUPLE_ELEM(2, data)
@@ -114,29 +169,26 @@ void trace(
 #define INDEX0(data) INDEXTYPE(data)<DIM(data), UPORLO0(data), FRAME(data)>
 #define INDEX1(data) INDEXTYPE(data)<DIM(data), UPORLO1(data), FRAME(data)>
 
-#define INSTANTIATE(_, data)                                                  \
-  template void raise_or_lower_first_index(                                   \
-      const gsl::not_null<Tensor<DTYPE(data), Symmetry<2, 1, 1>,              \
-                                 index_list<change_index_up_lo<INDEX0(data)>, \
-                                            INDEX1(data), INDEX1(data)>>*>    \
-          result,                                                             \
-      const Tensor<DTYPE(data), Symmetry<2, 1, 1>,                            \
-                   index_list<INDEX0(data), INDEX1(data), INDEX1(data)>>&     \
-          tensor,                                                             \
-      const Tensor<DTYPE(data), Symmetry<1, 1>,                               \
-                   index_list<change_index_up_lo<INDEX0(data)>,               \
-                              change_index_up_lo<INDEX0(data)>>>&             \
-          metric) noexcept;                                                   \
-  template void trace_last_indices(                                           \
-      const gsl::not_null<                                                    \
-          Tensor<DTYPE(data), Symmetry<1>, index_list<INDEX0(data)>>*>        \
-          result,                                                             \
-      const Tensor<DTYPE(data), Symmetry<2, 1, 1>,                            \
-                   index_list<INDEX0(data), INDEX1(data), INDEX1(data)>>&     \
-          tensor,                                                             \
-      const Tensor<DTYPE(data), Symmetry<1, 1>,                               \
-                   index_list<change_index_up_lo<INDEX1(data)>,               \
-                              change_index_up_lo<INDEX1(data)>>>&             \
+#define INSTANTIATE(_, data)                                                 \
+  template Tensor<DTYPE(data), Symmetry<2, 1, 1>,                            \
+                  index_list<change_index_up_lo<INDEX0(data)>, INDEX1(data), \
+                             INDEX1(data)>>                                  \
+  raise_or_lower_first_index(                                                \
+      const Tensor<DTYPE(data), Symmetry<2, 1, 1>,                           \
+                   index_list<INDEX0(data), INDEX1(data), INDEX1(data)>>&    \
+          tensor,                                                            \
+      const Tensor<DTYPE(data), Symmetry<1, 1>,                              \
+                   index_list<change_index_up_lo<INDEX0(data)>,              \
+                              change_index_up_lo<INDEX0(data)>>>&            \
+          metric) noexcept;                                                  \
+  template Tensor<DTYPE(data), Symmetry<1>, index_list<INDEX0(data)>>        \
+  trace_last_indices(                                                        \
+      const Tensor<DTYPE(data), Symmetry<2, 1, 1>,                           \
+                   index_list<INDEX0(data), INDEX1(data), INDEX1(data)>>&    \
+          tensor,                                                            \
+      const Tensor<DTYPE(data), Symmetry<1, 1>,                              \
+                   index_list<change_index_up_lo<INDEX1(data)>,              \
+                              change_index_up_lo<INDEX1(data)>>>&            \
           metric) noexcept;
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3), (double, DataVector),
@@ -152,19 +204,16 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3), (double, DataVector),
 #undef INSTANTIATE
 
 #define INSTANTIATE2(_, data)                                           \
-  template void raise_or_lower_index(                                   \
-      const gsl::not_null<                                              \
-          Tensor<DTYPE(data), Symmetry<1>,                              \
-                 index_list<change_index_up_lo<INDEX0(data)>>>*>        \
-          trace_of_tensor,                                              \
+  template Tensor<DTYPE(data), Symmetry<1>,                             \
+                  index_list<change_index_up_lo<INDEX0(data)>>>         \
+  raise_or_lower_index(                                                 \
       const Tensor<DTYPE(data), Symmetry<1>, index_list<INDEX0(data)>>& \
           tensor,                                                       \
       const Tensor<DTYPE(data), Symmetry<1, 1>,                         \
                    index_list<change_index_up_lo<INDEX0(data)>,         \
                               change_index_up_lo<INDEX0(data)>>>&       \
           metric) noexcept;                                             \
-  template void trace(                                                  \
-      const gsl::not_null<Scalar<DTYPE(data)>*> trace,                  \
+  template Scalar<DTYPE(data)> trace(                                   \
       const Tensor<DTYPE(data), Symmetry<1, 1>,                         \
                    index_list<INDEX0(data), INDEX0(data)>>& tensor,     \
       const Tensor<DTYPE(data), Symmetry<1, 1>,                         \

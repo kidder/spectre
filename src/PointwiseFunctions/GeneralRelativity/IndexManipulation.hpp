@@ -3,12 +3,14 @@
 
 #pragma once
 
-#include "DataStructures/MakeWithValue.hpp"
-#include "DataStructures/Tensor/Tensor.hpp"
-#include "Utilities/Gsl.hpp"
-#include "Utilities/TMPL.hpp"
+#include "DataStructures/Tensor/TypeAliases.hpp"
 
-// IWYU pragma: no_forward_declare Tensor
+/// \cond
+namespace gsl {
+template <typename>
+class not_null;
+}  // namespace gsl
+/// \endcond
 
 // @{
 /*!
@@ -45,14 +47,7 @@ raise_or_lower_first_index(
                  index_list<Index0, Index1, Index1>>& tensor,
     const Tensor<DataType, Symmetry<1, 1>,
                  index_list<change_index_up_lo<Index0>,
-                            change_index_up_lo<Index0>>>& metric) noexcept {
-  auto result = make_with_value<
-      Tensor<DataType, Symmetry<2, 1, 1>,
-             index_list<change_index_up_lo<Index0>, Index1, Index1>>>(metric,
-                                                                      0.);
-  raise_or_lower_first_index(make_not_null(&result), tensor, metric);
-  return result;
-}
+                            change_index_up_lo<Index0>>>& metric) noexcept;
 // @}
 
 // @{
@@ -84,13 +79,7 @@ raise_or_lower_index(
     const Tensor<DataType, Symmetry<1>, index_list<Index0>>& tensor,
     const Tensor<DataType, Symmetry<1, 1>,
                  index_list<change_index_up_lo<Index0>,
-                            change_index_up_lo<Index0>>>& metric) noexcept {
-  auto result = make_with_value<
-      Tensor<DataType, Symmetry<1>, index_list<change_index_up_lo<Index0>>>>(
-      metric, 0.);
-  raise_or_lower_index(make_not_null(&result), tensor, metric);
-  return result;
-}
+                            change_index_up_lo<Index0>>>& metric) noexcept;
 // @}
 
 // @{
@@ -121,13 +110,7 @@ Tensor<DataType, Symmetry<1>, index_list<Index0>> trace_last_indices(
                  index_list<Index0, Index1, Index1>>& tensor,
     const Tensor<DataType, Symmetry<1, 1>,
                  index_list<change_index_up_lo<Index1>,
-                            change_index_up_lo<Index1>>>& metric) noexcept {
-  auto trace_of_tensor =
-      make_with_value<Tensor<DataType, Symmetry<1>, index_list<Index0>>>(metric,
-                                                                         0.);
-  trace_last_indices(make_not_null(&trace_of_tensor), tensor, metric);
-  return trace_of_tensor;
-}
+                            change_index_up_lo<Index1>>>& metric) noexcept;
 // @}
 
 // @{
@@ -150,9 +133,5 @@ Scalar<DataType> trace(
     const Tensor<DataType, Symmetry<1, 1>, index_list<Index0, Index0>>& tensor,
     const Tensor<DataType, Symmetry<1, 1>,
                  index_list<change_index_up_lo<Index0>,
-                            change_index_up_lo<Index0>>>& metric) noexcept {
-  Scalar<DataType> trace{};
-  ::trace(make_not_null(&trace), tensor, metric);
-  return trace;
-}
+                            change_index_up_lo<Index0>>>& metric) noexcept;
 // @}
