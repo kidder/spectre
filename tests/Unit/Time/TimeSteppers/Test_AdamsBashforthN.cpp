@@ -11,6 +11,7 @@
 #include <deque>
 #include <initializer_list>
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "ErrorHandling/Assert.hpp"
 #include "Framework/TestCreation.hpp"
 #include "Framework/TestHelpers.hpp"
@@ -26,7 +27,6 @@
 #include "Utilities/ForceInline.hpp"
 #include "Utilities/Gsl.hpp"
 #include "Utilities/Literals.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 SPECTRE_TEST_CASE("Unit.Time.TimeSteppers.AdamsBashforthN", "[Unit][Time]") {
   for (size_t order = 1; order < 9; ++order) {

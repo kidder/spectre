@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/CoordinateMaps/Affine.hpp"
 #include "Domain/CoordinateMaps/BulgedCube.hpp"
@@ -43,7 +44,6 @@
 #include "Utilities/Gsl.hpp"
 #include "Utilities/Literals.hpp"
 #include "Utilities/MakeArray.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 namespace domain {
 namespace {

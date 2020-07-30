@@ -8,10 +8,10 @@
 #include <utility>
 
 #include "DataStructures/DenseVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "Framework/TestHelpers.hpp"
 #include "Options/Options.hpp"
 #include "Options/ParseOptions.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 // IWYU pragma: no_include "DataStructures/DataVector.hpp"

@@ -12,6 +12,7 @@
 #include "DataStructures/DataBox/DataBoxTag.hpp"
 #include "DataStructures/DataBox/Prefixes.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/DeterminantAndInverse.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
@@ -30,7 +31,6 @@
 #include "PointwiseFunctions/GeneralRelativity/SpatialMetric.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/ProtocolHelpers.hpp"
 
 namespace CurvedScalarWave::CurvedScalarWave_detail {

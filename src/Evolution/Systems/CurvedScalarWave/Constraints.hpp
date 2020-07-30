@@ -10,11 +10,11 @@
 #include <cstddef>
 
 #include "DataStructures/DataBox/Tag.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Evolution/Systems/CurvedScalarWave/Tags.hpp"
 #include "NumericalAlgorithms/LinearOperators/PartialDerivatives.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 namespace CurvedScalarWave {

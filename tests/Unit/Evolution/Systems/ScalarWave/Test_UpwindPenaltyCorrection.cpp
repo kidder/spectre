@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Evolution/Systems/ScalarWave/UpwindPenaltyCorrection.hpp"
 #include "Framework/CheckWithRandomValues.hpp"
@@ -18,7 +19,6 @@
 #include "NumericalAlgorithms/DiscontinuousGalerkin/Protocols.hpp"
 #include "Utilities/Gsl.hpp"
 #include "Utilities/MakeArray.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/ProtocolHelpers.hpp"
 #include "Utilities/TMPL.hpp"
 

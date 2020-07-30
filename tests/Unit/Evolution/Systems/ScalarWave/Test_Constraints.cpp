@@ -14,6 +14,7 @@
 #include "DataStructures/DataBox/DataBoxTag.hpp"
 #include "DataStructures/DataBox/Prefixes.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/DeterminantAndInverse.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "DataStructures/Variables.hpp"
@@ -38,7 +39,6 @@
 #include "PointwiseFunctions/MathFunctions/MathFunction.hpp"
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"
 

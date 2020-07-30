@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "DataStructures/DataBox/DataBox.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/CoordinateMaps/Tags.hpp"
 #include "Domain/FunctionsOfTime/Tags.hpp"
@@ -23,7 +24,6 @@
 #include "ParallelAlgorithms/Initialization/MergeIntoDataBox.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "Time/Tags.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 namespace GeneralizedHarmonic::gauges::Actions {

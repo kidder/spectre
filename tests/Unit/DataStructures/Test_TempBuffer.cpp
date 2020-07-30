@@ -4,13 +4,13 @@
 #include "Framework/TestingFramework.hpp"
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/TempBuffer.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "DataStructures/Variables.hpp"
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/ContainerHelpers.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"
 

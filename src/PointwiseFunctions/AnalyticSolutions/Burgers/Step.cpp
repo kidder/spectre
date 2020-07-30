@@ -6,9 +6,9 @@
 #include <pup.h>
 
 #include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/Math.hpp"  // IWYU pragma: keep
 
 // IWYU pragma: no_forward_declare Tensor

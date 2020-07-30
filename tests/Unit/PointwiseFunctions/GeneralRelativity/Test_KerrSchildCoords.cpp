@@ -11,6 +11,7 @@
 #include <tuple>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "ErrorHandling/Error.hpp"
 #include "Framework/CheckWithRandomValues.hpp"
@@ -18,7 +19,6 @@
 #include "Framework/SetupLocalPythonEnvironment.hpp"
 #include "Framework/TestHelpers.hpp"
 #include "PointwiseFunctions/GeneralRelativity/KerrSchildCoords.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 namespace {
 

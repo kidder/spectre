@@ -6,6 +6,7 @@
 #include <cmath>  // IWYU pragma: keep
 #include <pup.h>
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "ErrorHandling/Assert.hpp"
 #include "Utilities/ConstantExpressions.hpp"
@@ -14,7 +15,6 @@
 #include "Utilities/EqualWithinRoundoff.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 namespace domain {
 namespace CoordinateMaps {

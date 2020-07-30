@@ -10,6 +10,7 @@
 #include "DataStructures/DataBox/DataBox.hpp"
 #include "DataStructures/DataBox/DataBoxTag.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Elliptic/Systems/Elasticity/Tags.hpp"
 #include "Framework/CheckWithRandomValues.hpp"
@@ -18,7 +19,6 @@
 #include "PointwiseFunctions/Elasticity/ConstitutiveRelations/IsotropicHomogeneous.hpp"
 #include "PointwiseFunctions/Elasticity/ConstitutiveRelations/Tags.hpp"
 #include "PointwiseFunctions/Elasticity/PotentialEnergy.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 namespace {

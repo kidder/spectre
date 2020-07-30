@@ -17,12 +17,12 @@
 #include <vector>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"
 #include "ErrorHandling/Assert.hpp"
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/ContainerHelpers.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 // IWYU pragma: no_include <boost/numeric/odeint/integrate/integrate_adaptive.hpp>
 // IWYU pragma: no_include <boost/numeric/odeint/stepper/controlled_runge_kutta.hpp>

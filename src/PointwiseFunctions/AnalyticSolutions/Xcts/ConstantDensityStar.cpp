@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"  // IWYU pragma: keep
 #include "DataStructures/Tensor/Tensor.hpp"               // IWYU pragma: keep
 #include "NumericalAlgorithms/RootFinding/NewtonRaphson.hpp"
@@ -18,7 +19,6 @@
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/ContainerHelpers.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 // IWYU pragma: no_forward_declare Tensor
 

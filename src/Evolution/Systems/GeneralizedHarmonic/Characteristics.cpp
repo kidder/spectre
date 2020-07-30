@@ -7,6 +7,7 @@
 #include <array>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/DotProduct.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"  // IWYU pragma: keep
 #include "DataStructures/Tensor/Tensor.hpp"
@@ -14,7 +15,6 @@
 #include "PointwiseFunctions/GeneralRelativity/IndexManipulation.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 // IWYU pragma: no_forward_declare Tensor
 

@@ -9,6 +9,7 @@
 #include "DataStructures/DataBox/PrefixHelpers.hpp"
 #include "DataStructures/DataBox/Prefixes.hpp"  // IWYU pragma: keep
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/TypeAliases.hpp"
 #include "Elliptic/Systems/Xcts/Tags.hpp"  // IWYU pragma: keep
 #include "Framework/CheckWithRandomValues.hpp"
@@ -16,7 +17,6 @@
 #include "Framework/TestCreation.hpp"
 #include "Framework/TestHelpers.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/Xcts/ConstantDensityStar.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"
 

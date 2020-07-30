@@ -4,13 +4,13 @@
 #include "Framework/TestingFramework.hpp"
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Evolution/VariableFixing/FixToAtmosphere.hpp"
 #include "Framework/TestCreation.hpp"
 #include "Framework/TestHelpers.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/EquationOfState.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 // IWYU pragma: no_include <array>
 

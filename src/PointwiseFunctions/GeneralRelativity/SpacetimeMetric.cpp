@@ -3,12 +3,12 @@
 
 #include "PointwiseFunctions/GeneralRelativity/SpacetimeMetric.hpp"
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/ContainerHelpers.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 /// \cond
 namespace gr {

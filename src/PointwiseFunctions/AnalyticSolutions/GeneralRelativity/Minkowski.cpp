@@ -5,9 +5,9 @@
 
 #include "DataStructures/DataBox/Prefixes.hpp"  // IWYU pragma: keep
 #include "DataStructures/DataVector.hpp"        // IWYU pragma: keep
-#include "DataStructures/Tensor/Tensor.hpp"     // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
+#include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 // IWYU pragma: no_forward_declare ::Tags::deriv
 

@@ -8,6 +8,7 @@
 #include <string>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/TypeAliases.hpp"
 #include "Framework/CheckWithRandomValues.hpp"
 #include "Framework/SetupLocalPythonEnvironment.hpp"
@@ -17,7 +18,6 @@
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "PointwiseFunctions/Hydro/Tags.hpp"
 #include "Utilities/MakeArray.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 // IWYU pragma: no_include <pup.h>

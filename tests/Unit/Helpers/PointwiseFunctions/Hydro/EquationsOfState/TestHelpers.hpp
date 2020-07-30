@@ -10,6 +10,7 @@
 #include <string>
 #include <tuple>
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Framework/CheckWithRandomValues.hpp"
 #include "Framework/SetupLocalPythonEnvironment.hpp"
@@ -17,7 +18,6 @@
 #include "Parallel/PupStlCpp11.hpp"
 #include "PointwiseFunctions/Hydro/EquationsOfState/EquationOfState.hpp"
 #include "Utilities/Literals.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/Overloader.hpp"
 
 namespace TestHelpers {

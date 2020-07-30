@@ -18,6 +18,7 @@
 #include "DataStructures/DataBox/DataBoxTag.hpp"
 #include "DataStructures/DataBox/Prefixes.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/Block.hpp"
 #include "Domain/CoordinateMaps/CoordinateMap.hpp"
@@ -60,7 +61,6 @@
 #include "Time/TimeStepId.hpp"
 #include "Utilities/Gsl.hpp"
 #include "Utilities/Literals.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"
 

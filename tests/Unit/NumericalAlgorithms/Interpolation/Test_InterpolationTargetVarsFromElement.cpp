@@ -10,6 +10,7 @@
 #include "DataStructures/DataBox/DataBox.hpp"
 #include "DataStructures/DataBox/DataBoxTag.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "Domain/Creators/Shell.hpp"
 #include "Domain/Domain.hpp"
 #include "Domain/Tags.hpp"
@@ -20,7 +21,6 @@
 #include "Time/Slab.hpp"
 #include "Time/Tags.hpp"
 #include "Time/Time.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/Rational.hpp"
 
 /// \cond

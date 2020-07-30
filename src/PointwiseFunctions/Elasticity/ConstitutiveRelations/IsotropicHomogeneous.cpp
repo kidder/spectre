@@ -7,10 +7,10 @@
 #include <pup.h>  // IWYU pragma: keep
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "DataStructures/Tensor/TypeAliases.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 // IWYU pragma: no_forward_declare Tensor
 
 namespace Elasticity {

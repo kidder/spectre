@@ -16,6 +16,7 @@
 #include "DataStructures/DataBox/Prefixes.hpp"  // IWYU pragma: keep
 #include "DataStructures/DataBox/Tag.hpp"
 #include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "DataStructures/Variables.hpp"  // IWYU pragma: keep
 #include "Domain/CoordinateMaps/Affine.hpp"
@@ -32,7 +33,6 @@
 #include "PointwiseFunctions/MathFunctions/MathFunction.hpp"
 #include "PointwiseFunctions/MathFunctions/PowX.hpp"
 #include "PointwiseFunctions/MathFunctions/TensorProduct.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 // IWYU pragma: no_forward_declare MathFunction

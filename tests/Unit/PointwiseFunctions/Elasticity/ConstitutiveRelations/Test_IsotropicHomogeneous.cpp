@@ -9,6 +9,7 @@
 #include <tuple>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Framework/CheckWithRandomValues.hpp"
 #include "Framework/SetupLocalPythonEnvironment.hpp"
@@ -17,7 +18,6 @@
 #include "Helpers/DataStructures/MakeWithRandomValues.hpp"
 #include "PointwiseFunctions/Elasticity/ConstitutiveRelations/IsotropicHomogeneous.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 // IWYU pragma: no_forward_declare Tensor
 
 namespace {

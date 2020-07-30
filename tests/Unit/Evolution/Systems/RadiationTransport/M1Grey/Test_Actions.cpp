@@ -9,6 +9,7 @@
 
 #include "DataStructures/DataBox/DataBox.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/Tags.hpp"  // IWYU pragma: keep
 #include "Evolution/Systems/RadiationTransport/M1Grey/M1Closure.hpp"
@@ -18,7 +19,6 @@
 #include "Parallel/PhaseDependentActionList.hpp"  // IWYU pragma: keep
 #include "ParallelAlgorithms/Actions/MutateApply.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 // IWYU pragma: no_forward_declare Tensor

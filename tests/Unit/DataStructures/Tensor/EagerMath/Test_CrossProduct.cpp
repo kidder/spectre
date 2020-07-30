@@ -7,11 +7,11 @@
 #include <limits>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/CrossProduct.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Framework/CheckWithRandomValues.hpp"
 #include "Framework/SetupLocalPythonEnvironment.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 // IWYU pragma: no_forward_declare Tensor
 

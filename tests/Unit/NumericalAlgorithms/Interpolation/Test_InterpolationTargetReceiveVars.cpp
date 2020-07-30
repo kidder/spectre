@@ -13,6 +13,7 @@
 #include "DataStructures/DataBox/DataBoxTag.hpp"
 #include "DataStructures/DataBox/Tag.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "DataStructures/Variables.hpp"  // IWYU pragma: keep
 #include "Domain/Creators/Shell.hpp"
@@ -31,7 +32,6 @@
 #include "Time/TimeStepId.hpp"
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/Rational.hpp"
 #include "Utilities/Requires.hpp"
 #include "Utilities/TMPL.hpp"

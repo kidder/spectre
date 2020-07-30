@@ -8,6 +8,7 @@
 #include <random>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Framework/TestHelpers.hpp"
@@ -15,7 +16,6 @@
 #include "Helpers/DataStructures/RandomUnitNormal.hpp"
 #include "Helpers/PointwiseFunctions/GeneralRelativity/TestHelpers.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 namespace {
 

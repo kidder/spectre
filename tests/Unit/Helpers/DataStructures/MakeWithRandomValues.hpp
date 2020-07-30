@@ -11,10 +11,10 @@
 #include <limits>
 #include <random>
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/SpinWeighted.hpp"
 #include "DataStructures/Variables.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/Requires.hpp"
 #include "Utilities/TypeTraits.hpp"
 #include "Utilities/TypeTraits/GetFundamentalType.hpp"

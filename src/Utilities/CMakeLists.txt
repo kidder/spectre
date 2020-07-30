@@ -45,7 +45,6 @@ spectre_target_headers(
   MakeSignalingNan.hpp
   MakeString.hpp
   MakeVector.hpp
-  MakeWithValue.hpp
   Math.hpp
   NoSuchType.hpp
   Numeric.hpp

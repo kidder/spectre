@@ -12,10 +12,10 @@
 #include "DataStructures/DataBox/DataBoxTag.hpp"
 #include "DataStructures/DataBox/Tag.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Helpers/DataStructures/DataBox/TestHelpers.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 // IWYU pragma: no_forward_declare Tensor

@@ -9,6 +9,7 @@
 #include <random>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/DeterminantAndInverse.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Evolution/Systems/GrMhd/ValenciaDivClean/ConservativeFromPrimitive.hpp"
@@ -19,7 +20,6 @@
 #include "PointwiseFunctions/Hydro/EquationsOfState/EquationOfState.hpp"
 #include "PointwiseFunctions/Hydro/SpecificEnthalpy.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 // IWYU pragma: no_include <array>

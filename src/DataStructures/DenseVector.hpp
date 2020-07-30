@@ -8,10 +8,10 @@
 
 #include <pup.h>  // IWYU pragma: keep
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "Options/Options.hpp"
 #include "Utilities/Blaze.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TypeTraits.hpp"
 
 #include <blaze/math/DynamicVector.h>

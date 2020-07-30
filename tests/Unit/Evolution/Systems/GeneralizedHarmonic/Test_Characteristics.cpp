@@ -14,6 +14,7 @@
 
 #include "DataStructures/DataBox/Prefixes.hpp"  // IWYU pragma: keep
 #include "DataStructures/DataVector.hpp"        // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/DeterminantAndInverse.hpp"
 #include "DataStructures/Tensor/EagerMath/DotProduct.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"
@@ -45,7 +46,6 @@
 #include "PointwiseFunctions/GeneralRelativity/SpacetimeNormalVector.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TaggedTuple.hpp"
 
 // IWYU pragma: no_forward_declare GeneralizedHarmonic::Tags::Pi

@@ -6,6 +6,7 @@
 #include <cstddef>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/Tags.hpp"
 #include "Elliptic/Systems/Elasticity/Tags.hpp"
@@ -14,7 +15,6 @@
 #include "Utilities/ContainerHelpers.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 namespace Elasticity {
 

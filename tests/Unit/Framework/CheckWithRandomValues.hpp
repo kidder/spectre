@@ -47,13 +47,13 @@
 #include <vector>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "ErrorHandling/Error.hpp"
 #include "Framework/Pypp.hpp"
 #include "Framework/TestHelpers.hpp"
 #include "Helpers/DataStructures/MakeWithRandomValues.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TypeTraits.hpp"
 #include "Utilities/TypeTraits/FunctionInfo.hpp"

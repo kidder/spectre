@@ -15,6 +15,7 @@
 
 #include "DataStructures/ComplexDataVector.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Framework/CheckWithRandomValues.hpp"
 #include "Framework/Pypp.hpp"
@@ -23,7 +24,6 @@
 #include "Framework/TestHelpers.hpp"
 #include "Helpers/DataStructures/MakeWithRandomValues.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"
 

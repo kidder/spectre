@@ -6,13 +6,13 @@
 #include <pup.h>
 
 #include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/DotProduct.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "Parallel/PupStlCpp11.hpp"
 #include "PointwiseFunctions/Hydro/LorentzFactor.hpp"
 #include "PointwiseFunctions/Hydro/Tags.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/Math.hpp"  // IWYU pragma: keep
 
 // IWYU pragma: no_forward_declare Tensor

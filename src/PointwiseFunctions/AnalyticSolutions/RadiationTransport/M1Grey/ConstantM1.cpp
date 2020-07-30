@@ -9,13 +9,13 @@
 #include <cmath>
 #include <numeric>
 
-#include "DataStructures/DataVector.hpp"     // IWYU pragma: keep
+#include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "Evolution/Systems/RadiationTransport/Tags.hpp"
 #include "Parallel/PupStlCpp11.hpp"
 #include "PointwiseFunctions/Hydro/Tags.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 // IWYU pragma:  no_include "DataStructures/Tensor/TypeAliases.hpp"
 // IWYU pragma: no_forward_declare Tensor

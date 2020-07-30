@@ -15,7 +15,7 @@
 
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Utilities/DereferenceWrapper.hpp"
-#include "Utilities/MakeWithValue.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 namespace domain {

@@ -11,6 +11,7 @@
 #include "DataStructures/DataBox/DataBox.hpp"
 #include "DataStructures/DataBox/Prefixes.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "DataStructures/Variables.hpp"
 #include "Domain/LogicalCoordinates.hpp"
@@ -23,7 +24,6 @@
 #include "NumericalAlgorithms/Spectral/Mesh.hpp"
 #include "Utilities/Gsl.hpp"
 #include "Utilities/MakeArray.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/ProtocolHelpers.hpp"
 #include "Utilities/TMPL.hpp"
 

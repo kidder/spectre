@@ -11,6 +11,7 @@
 #include "DataStructures/DataBox/DataBoxTag.hpp"
 #include "DataStructures/DataBox/Prefixes.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Elliptic/Systems/Poisson/Equations.hpp"
 #include "Elliptic/Systems/Poisson/Tags.hpp"
@@ -22,7 +23,6 @@
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "Utilities/Gsl.hpp"
 #include "Utilities/MakeString.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 namespace {

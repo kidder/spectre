@@ -15,6 +15,7 @@
 #include <unordered_map>
 
 #include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
 #include "Domain/Block.hpp"                  // IWYU pragma: keep
@@ -37,7 +38,6 @@
 #include "Utilities/ForceInline.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 template <size_t VolumeDim>
 class Element;

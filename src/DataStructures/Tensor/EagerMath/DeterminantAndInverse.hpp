@@ -10,11 +10,11 @@
 #include <utility>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "DataStructures/Variables.hpp"
 #include "ErrorHandling/Assert.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/Requires.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TypeTraits/IsComplexOfFundamental.hpp"

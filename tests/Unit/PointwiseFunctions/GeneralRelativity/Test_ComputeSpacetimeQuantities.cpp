@@ -12,6 +12,7 @@
 #include "DataStructures/DataBox/DataBox.hpp"
 #include "DataStructures/DataBox/Prefixes.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/DeterminantAndInverse.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Framework/CheckWithRandomValues.hpp"
@@ -33,7 +34,6 @@
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "PointwiseFunctions/GeneralRelativity/TimeDerivativeOfSpacetimeMetric.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 
 // IWYU pragma: no_forward_declare Tensor

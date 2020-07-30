@@ -3,11 +3,11 @@
 
 #include "PointwiseFunctions/GeneralRelativity/Ricci.hpp"
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Utilities/ContainerHelpers.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 /// \cond
 namespace gr {

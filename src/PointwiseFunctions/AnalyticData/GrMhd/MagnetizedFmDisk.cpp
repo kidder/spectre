@@ -11,6 +11,7 @@
 
 #include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
 #include "DataStructures/Index.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/DotProduct.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "ErrorHandling/Assert.hpp"
@@ -20,7 +21,6 @@
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/ContainerHelpers.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 // IWYU pragma: no_forward_declare Tensor
 

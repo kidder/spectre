@@ -7,13 +7,13 @@
 #include <boost/preprocessor/tuple/to_list.hpp>
 #include <limits>
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/TypeAliases.hpp"
 #include "Options/Options.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/AnalyticSolution.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"  // IWYU pragma: keep
 #include "PointwiseFunctions/Hydro/EquationsOfState/PolytropicFluid.hpp"  // IWYU pragma: keep
 #include "PointwiseFunctions/Hydro/TagsDeclarations.hpp"  // IWYU pragma: keep
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"
 

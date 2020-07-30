@@ -9,6 +9,7 @@
 #include <pup.h>  // IWYU pragma: keep
 
 #include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "ErrorHandling/Assert.hpp"
 #include "Evolution/Systems/NewtonianEuler/Sources/VortexPerturbation.hpp"
@@ -17,7 +18,6 @@
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 // IWYU pragma: no_include <complex>
 

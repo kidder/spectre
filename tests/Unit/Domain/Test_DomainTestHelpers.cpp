@@ -9,6 +9,7 @@
 #include <random>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/Structure/Direction.hpp"
@@ -17,7 +18,6 @@
 #include "Helpers/DataStructures/MakeWithRandomValues.hpp"
 #include "Helpers/Domain/DomainTestHelpers.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/StdHelpers.hpp"  // IWYU pragma: keep
 
 namespace {

@@ -8,13 +8,13 @@
 #include <cmath>
 #include <pup.h>
 
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "ErrorHandling/Assert.hpp"
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/DereferenceWrapper.hpp"
 #include "Utilities/EqualWithinRoundoff.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/StdArrayHelpers.hpp"
 
 namespace domain {

@@ -7,6 +7,7 @@
 #include <cstddef>
 
 #include "DataStructures/DataVector.hpp"  // IWYU pragma: keep
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/CrossProduct.hpp"
 #include "DataStructures/Tensor/EagerMath/DotProduct.hpp"
 #include "DataStructures/Tensor/EagerMath/Magnitude.hpp"
@@ -18,7 +19,6 @@
 #include "Utilities/EqualWithinRoundoff.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 // IWYU pragma:  no_include "DataStructures/Tensor/TypeAliases.hpp"
 

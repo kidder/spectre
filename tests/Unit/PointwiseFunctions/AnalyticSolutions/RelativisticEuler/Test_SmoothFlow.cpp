@@ -12,6 +12,7 @@
 
 #include "DataStructures/DataBox/Prefixes.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/TypeAliases.hpp"
 #include "Framework/CheckWithRandomValues.hpp"
 #include "Framework/SetupLocalPythonEnvironment.hpp"
@@ -22,7 +23,6 @@
 #include "PointwiseFunctions/AnalyticSolutions/RelativisticEuler/SmoothFlow.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "PointwiseFunctions/Hydro/Tags.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/StdArrayHelpers.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"

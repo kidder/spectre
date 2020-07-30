@@ -11,6 +11,7 @@
 #include "DataStructures/DataBox/Tag.hpp"
 #include "DataStructures/DataBox/TagName.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/CoordinateMaps/CoordinateMap.hpp"
 #include "Domain/LogicalCoordinates.hpp"
@@ -20,7 +21,6 @@
 #include "NumericalAlgorithms/LinearOperators/Divergence.tpp"
 #include "NumericalAlgorithms/Spectral/Mesh.hpp"
 #include "Utilities/ConstantExpressions.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/Numeric.hpp"
 #include "Utilities/Tuple.hpp"
 

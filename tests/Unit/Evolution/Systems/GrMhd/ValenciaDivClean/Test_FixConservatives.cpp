@@ -7,12 +7,12 @@
 #include <cstddef>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Evolution/Systems/GrMhd/ValenciaDivClean/FixConservatives.hpp"
 #include "Framework/TestCreation.hpp"
 #include "Framework/TestHelpers.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 // IWYU pragma: no_include <array>
 

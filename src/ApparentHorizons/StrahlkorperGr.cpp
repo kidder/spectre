@@ -12,6 +12,7 @@
 #include "ApparentHorizons/Strahlkorper.hpp"
 #include "ApparentHorizons/YlmSpherepack.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Matrix.hpp"
 #include "DataStructures/Tensor/EagerMath/DeterminantAndInverse.hpp"
 #include "DataStructures/Tensor/EagerMath/DotProduct.hpp"
@@ -23,7 +24,6 @@
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/ContainerHelpers.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/StdArrayHelpers.hpp"
 
 // IWYU pragma: no_include <complex>

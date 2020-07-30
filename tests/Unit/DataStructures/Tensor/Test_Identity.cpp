@@ -7,8 +7,8 @@
 #include <limits>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Identity.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 namespace {
 template <size_t Dim, typename DataType>

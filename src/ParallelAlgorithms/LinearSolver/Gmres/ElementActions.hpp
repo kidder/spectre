@@ -9,6 +9,7 @@
 #include "DataStructures/DataBox/PrefixHelpers.hpp"
 #include "DataStructures/DataBox/Prefixes.hpp"
 #include "DataStructures/DenseVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "NumericalAlgorithms/LinearSolver/InnerProduct.hpp"
 #include "Parallel/ConstGlobalCache.hpp"
 #include "Parallel/Info.hpp"
@@ -18,7 +19,6 @@
 #include "ParallelAlgorithms/LinearSolver/Tags.hpp"
 #include "Utilities/Functional.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/Requires.hpp"
 
 /// \cond

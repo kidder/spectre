@@ -7,6 +7,7 @@
 
 #include "DataStructures/DataBox/Prefixes.hpp"  // IWYU pragma: keep
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Framework/TestCreation.hpp"
 #include "Framework/TestHelpers.hpp"
@@ -15,7 +16,6 @@
 #include "NumericalAlgorithms/LinearOperators/PartialDerivatives.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/GeneralRelativity/Minkowski.hpp"
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
-#include "Utilities/MakeWithValue.hpp"
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"
 

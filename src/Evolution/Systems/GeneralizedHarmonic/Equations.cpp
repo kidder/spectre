@@ -7,6 +7,7 @@
 
 #include "DataStructures/DataBox/PrefixHelpers.hpp"
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/MakeWithValue.hpp"
 #include "DataStructures/Tensor/EagerMath/DeterminantAndInverse.hpp"
 #include "DataStructures/Tensor/EagerMath/DotProduct.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"  // IWYU pragma: keep
@@ -27,7 +28,6 @@
 #include "PointwiseFunctions/GeneralRelativity/Tags.hpp"
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/Gsl.hpp"
-#include "Utilities/MakeWithValue.hpp"
 
 template <typename TagsList>
 class Variables;
