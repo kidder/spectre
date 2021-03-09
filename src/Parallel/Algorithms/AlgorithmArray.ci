@@ -24,6 +24,10 @@ module AlgorithmArray {
             typename ParallelComponent::initialization_tags>
             initialization_items);
 
+    entry AlgorithmArray(
+        Parallel::CProxy_GlobalCache<typename ParallelComponent::metavariables>,
+        typename ParallelComponent::metavariables::Phase);
+
     template <typename Action, typename... Args>
     entry void simple_action(std::tuple<Args...> & args);
 

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <array>
+#include <boost/rational.hpp>
 #include <boost/variant.hpp>
 #include <cstddef>
 #include <initializer_list>
@@ -75,6 +76,30 @@ template <typename... Ts>
 inline void operator|(er& p, boost::variant<Ts...>& d) noexcept {  // NOLINT
   pup(p, d);
 }
+
+// @{
+/// \ingroup ParallelGroup
+/// Serialization of boost::rational for Charm++
+template <class T>
+void pup(PUP::er& p, boost::rational<T>& var) {  // NOLINT
+  if (p.isUnpacking()) {
+    typename boost::rational<T>::int_type n, d;
+    p | n;
+    p | d;
+    var.assign(n, d);
+  } else {
+    typename boost::rational<T>::int_type n = var.numerator();
+    typename boost::rational<T>::int_type d = var.denominator();
+    p | n;
+    p | d;
+  }
+}
+
+template <typename T>
+inline void operator|(PUP::er& p, boost::rational<T>& var) {  // NOLINT
+  pup(p, var);
+}
+// @}
 }  // namespace PUP
 
 /*!

@@ -31,6 +31,7 @@
 #include "Parallel/PupStlCpp11.hpp"
 #include "Parallel/SimpleActionVisitation.hpp"
 #include "Parallel/TypeTraits.hpp"
+#include "ParallelAlgorithms/Initialization/MutateAssign.hpp"
 #include "Utilities/BoostHelpers.hpp"
 #include "Utilities/ErrorHandling/Assert.hpp"
 #include "Utilities/ErrorHandling/Error.hpp"
@@ -45,6 +46,8 @@
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"
 #include "Utilities/TypeTraits.hpp"
+
+#include "Parallel/Printf.hpp"
 
 // IWYU pragma: no_include <array>  // for tuple_size
 
@@ -173,6 +176,10 @@ class AlgorithmImpl<ParallelComponent, tmpl::list<PhaseDepActionListsPack...>>
       const Parallel::CProxy_GlobalCache<metavariables>&
           global_cache_proxy,
       tuples::TaggedTuple<InitializationTags...> initialization_items) noexcept;
+
+  AlgorithmImpl(
+      const Parallel::CProxy_GlobalCache<metavariables>& global_cache_proxy,
+      PhaseType current_phase) noexcept;
 
   /// Charm++ migration constructor, used after a chare is migrated
   explicit AlgorithmImpl(CkMigrateMessage* /*msg*/) noexcept;
@@ -494,6 +501,43 @@ AlgorithmImpl<ParallelComponent, tmpl::list<PhaseDepActionListsPack...>>::
           db::wrap_tags_in<Tags::FromGlobalCache, all_cache_tags>>>(
           global_cache_,
       std::move(get<InitializationTags>(initialization_items))...);
+}
+
+template <typename ParallelComponent, typename... PhaseDepActionListsPack>
+AlgorithmImpl<ParallelComponent, tmpl::list<PhaseDepActionListsPack...>>::
+    AlgorithmImpl(
+        const Parallel::CProxy_GlobalCache<metavariables>& global_cache_proxy,
+        PhaseType current_phase) noexcept
+    : AlgorithmImpl() {
+  global_cache_ = global_cache_proxy.ckLocalBranch();
+  phase_ = current_phase;
+  const auto initialize_databox_for_phase = [this](auto phase_dep_v) noexcept {
+    using PhaseDep = decltype(phase_dep_v);
+    constexpr PhaseType phase = PhaseDep::phase;
+    if (phase == phase_) {
+      constexpr size_t phase_index =
+          tmpl::index_of<phase_dependent_action_lists, PhaseDep>::value;
+      using databox_phase_type = tmpl::at_c<databox_phase_types, phase_index>;
+      using databox_types_this_phase =
+          typename databox_phase_type::databox_types;
+      using first_databox = tmpl::at_c<databox_types_this_phase, 0>;
+      box_ = first_databox{};
+      auto& box = boost::get<first_databox>(box_);
+      // ERROR("The DataBox type being retrieved at algorithm step: "
+      //       << algorithm_step_ << " in phase " << phase_index
+      //       << " is not the correct type but is of variant index "
+      //       << box_.which() << ".\nValid DataBox Types: \n  "
+      //       << pretty_type::get_name<databox_types_this_phase>()
+      //       << "\nVariant type:\n  " <<
+      //       pretty_type::get_name<variant_boxes>());
+      ::Initialization::mutate_assign<
+          tmpl::list<Tags::GlobalCacheImpl<metavariables>>>(make_not_null(&box),
+                                                            global_cache_);
+    }
+  };
+
+  EXPAND_PACK_LEFT_TO_RIGHT(
+      initialize_databox_for_phase(PhaseDepActionListsPack{}));
 }
 
 template <typename ParallelComponent, typename... PhaseDepActionListsPack>

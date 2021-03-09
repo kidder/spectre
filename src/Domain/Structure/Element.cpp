@@ -39,10 +39,11 @@ Element<VolumeDim>::Element(ElementId<VolumeDim> id,
         }
         return internal_boundaries;
       }()) {
-  // Assuming a maximum 2-to-1 refinement between neighboring elements:
-  ASSERT(number_of_neighbors_ <= maximum_number_of_neighbors(VolumeDim),
-         "Can't have " << number_of_neighbors_ << " neighbors in " << VolumeDim
-                       << " dimensions");
+  // // Assuming a maximum 2-to-1 refinement between neighboring elements:
+  // ASSERT(number_of_neighbors_ <= maximum_number_of_neighbors(VolumeDim),
+  //        "Can't have " << number_of_neighbors_ << " neighbors in " <<
+  //        VolumeDim
+  //                      << " dimensions");
 }
 
 template <size_t VolumeDim>

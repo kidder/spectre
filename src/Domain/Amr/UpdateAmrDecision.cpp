@@ -3,6 +3,7 @@
 
 #include "Domain/Amr/UpdateAmrDecision.hpp"
 
+#include "Domain/Amr/Flag.hpp"
 #include "Domain/Amr/Helpers.hpp"
 #include "Domain/Structure/Direction.hpp"
 #include "Domain/Structure/Element.hpp"    // IWYU pragma: keep
@@ -15,6 +16,10 @@
 template <size_t VolumeDim>
 class OrientationMap;
 
+#include "Parallel/Printf.hpp"
+#include "Utilities/StlStreamDeclarations.hpp"
+constexpr bool debug_update = false;
+
 namespace amr {
 
 template <size_t VolumeDim>
@@ -22,6 +27,13 @@ bool update_amr_decision(
     const gsl::not_null<std::array<amr::Flag, VolumeDim>*> my_current_amr_flags,
     const Element<VolumeDim>& element, const ElementId<VolumeDim>& neighbor_id,
     const std::array<amr::Flag, VolumeDim>& neighbor_amr_flags) noexcept {
+  if (debug_update) {
+    Parallel::printf("my_current_amr_flags = %s\n", *my_current_amr_flags);
+    Parallel::printf("element = %s\n", element);
+    Parallel::printf("neighbor_id = %s\n", neighbor_id);
+    Parallel::printf("neighbor_amr_flags = %s\n", neighbor_amr_flags);
+  }
+
   const auto& element_id = element.id();
   bool my_amr_decision_changed = false;
   bool neighbor_found = false;
@@ -87,14 +99,52 @@ bool update_amr_decision(
       // cannot join
       const size_t dimension_of_direction_to_neighbor =
           direction_to_neighbor.dimension();
+      const auto& reset_join_to_do_nothing = [
+        &my_current_amr_flags, &my_desired_levels, &my_amr_decision_changed
+      ](const size_t dim) noexcept {
+        gsl::at(*my_current_amr_flags, dim) = amr::Flag::DoNothing;
+        ++gsl::at(my_desired_levels, dim);
+        my_amr_decision_changed = true;
+      };
+
       if (amr::has_potential_sibling(element_id, direction_to_neighbor) and
           amr::Flag::Join == gsl::at(*my_current_amr_flags,
-                                     dimension_of_direction_to_neighbor) and
-          (my_desired_levels != neighbor_desired_levels)) {
-        gsl::at(*my_current_amr_flags, dimension_of_direction_to_neighbor) =
-            amr::Flag::DoNothing;
-        ++gsl::at(my_desired_levels, dimension_of_direction_to_neighbor);
-        my_amr_decision_changed = true;
+                                     dimension_of_direction_to_neighbor)) {
+        if (gsl::at(my_desired_levels, dimension_of_direction_to_neighbor) ==
+            gsl::at(neighbor_desired_levels,
+                    dimension_of_direction_to_neighbor)) {
+          // if I want to be coarser in a transverse direction, but am not
+          // joining in that direction choose not to join potential sibling
+          for (size_t d = 0; d < VolumeDim; ++d) {
+            if (amr::Flag::Split == gsl::at(*my_current_amr_flags, d) and
+                gsl::at(my_desired_levels, d) <
+                    gsl::at(neighbor_desired_levels, d)) {
+              reset_join_to_do_nothing(dimension_of_direction_to_neighbor);
+            }
+          }
+          if (amr::Flag::Join == gsl::at(*my_current_amr_flags,
+                                         dimension_of_direction_to_neighbor)) {
+            for (size_t d = 0; d < VolumeDim; ++d) {
+              if (gsl::at(my_desired_levels, d) <
+                  gsl::at(neighbor_desired_levels, d)) {
+                if (amr::Flag::Join == gsl::at(*my_current_amr_flags, d)) {
+                  reset_join_to_do_nothing(d);
+                } else {
+                  gsl::at(*my_current_amr_flags, d) = amr::Flag::Split;
+                  ++gsl::at(my_desired_levels, d);
+                  my_amr_decision_changed = true;
+                }
+              }
+            }
+          }
+        } else {
+          reset_join_to_do_nothing(dimension_of_direction_to_neighbor);
+          // gsl::at(*my_current_amr_flags, dimension_of_direction_to_neighbor)
+          // =
+          //     amr::Flag::DoNothing;
+          // ++gsl::at(my_desired_levels, dimension_of_direction_to_neighbor);
+          // my_amr_decision_changed = true;
+        }
       }
     }
   }

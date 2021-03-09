@@ -29,10 +29,10 @@ void Neighbors<VolumeDim>::add_ids(
   for (const auto& id : additional_ids) {
     ids_.insert(id);
   }
-  // Assuming a maximum 2-to-1 refinement between neighboring elements:
-  ASSERT(ids_.size() <= maximum_number_of_neighbors_per_direction(VolumeDim),
-         "Can't have " << ids_.size() << " neighbors in " << VolumeDim
-                       << " dimensions");
+  // // Assuming a maximum 2-to-1 refinement between neighboring elements:
+  // ASSERT(ids_.size() <= maximum_number_of_neighbors_per_direction(VolumeDim),
+  //        "Can't have " << ids_.size() << " neighbors in " << VolumeDim
+  //                      << " dimensions");
 }
 
 template <size_t VolumeDim>
