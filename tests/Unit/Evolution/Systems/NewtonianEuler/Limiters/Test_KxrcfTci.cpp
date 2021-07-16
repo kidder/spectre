@@ -123,7 +123,8 @@ void test_kxrcf_1d() noexcept {
   using Affine = domain::CoordinateMaps::Affine;
   const Affine xi_map{-1., 1., 3., 4.2};
   const auto coordmap =
-      domain::make_coordinate_map_base<Frame::Logical, Frame::Inertial>(xi_map);
+      domain::make_coordinate_map_base<Frame::BlockLogical, Frame::Inertial>(
+          xi_map);
   const ElementMap<1, Frame::Inertial> element_map(element.id(),
                                                    coordmap->get_clone());
 
@@ -198,7 +199,7 @@ void test_kxrcf_2d() noexcept {
   const Affine xi_map{-1., 1., 3., 4.2};
   const Affine eta_map{-1., 1., 3., 7.};
   const auto coordmap =
-      domain::make_coordinate_map_base<Frame::Logical, Frame::Inertial>(
+      domain::make_coordinate_map_base<Frame::BlockLogical, Frame::Inertial>(
           Affine2D(xi_map, eta_map));
   const ElementMap<2, Frame::Inertial> element_map(element.id(),
                                                    coordmap->get_clone());
@@ -285,7 +286,7 @@ void test_kxrcf_3d() noexcept {
   const Affine eta_map{-1., 1., -3., -2.4};
   const Affine zeta_map{-1., 1., 3., 7.};
   const auto coordmap =
-      domain::make_coordinate_map_base<Frame::Logical, Frame::Inertial>(
+      domain::make_coordinate_map_base<Frame::BlockLogical, Frame::Inertial>(
           Affine3D(xi_map, eta_map, zeta_map));
   const ElementMap<3, Frame::Inertial> element_map(element.id(),
                                                    coordmap->get_clone());

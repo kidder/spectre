@@ -90,13 +90,12 @@ struct MockReceivePoints {
       Requires<tmpl::list_contains_v<DbTags, ::intrp::Tags::NumberOfElements>> =
           nullptr>
   static void apply(
-      db::DataBox<DbTags>& box,
-      Parallel::GlobalCache<Metavariables>& /*cache*/,
+      db::DataBox<DbTags>& box, Parallel::GlobalCache<Metavariables>& /*cache*/,
       const ArrayIndex& /*array_index*/,
       const typename Metavariables::temporal_id::type& temporal_id,
       std::vector<std::optional<
           IdPair<domain::BlockId,
-                 tnsr::I<double, VolumeDim, typename Frame::Logical>>>>&&
+                 tnsr::I<double, VolumeDim, typename Frame::BlockLogical>>>>&&
           block_coord_holders) noexcept {
     db::mutate<intrp::Tags::InterpolatedVarsHolders<Metavariables>>(
         make_not_null(&box),
