@@ -19,8 +19,11 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: sxscollaborationspectrebuildenv_experimental
+          tags: |
+            type=edge,branch=develop
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v2
         with:
-          tags: user/app:latest
+         context:containers
+         file:Dockerfile.buildenv
