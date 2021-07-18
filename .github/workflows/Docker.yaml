@@ -1,6 +1,14 @@
 # Distributed under the MIT License.
 # See LICENSE.txt for details.
 
+# Set any defaults for the runs below.
+# - use bash as the default shell since this is almost certainly what
+#   is always expected. We use regular expressions in a few places
+#   that rely on bash.
+defaults:
+  run:
+    shell: bash
+    
 on:
   workflow_dispatch:
   push:
