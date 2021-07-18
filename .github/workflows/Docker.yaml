@@ -12,6 +12,7 @@ jobs:
       - name: Prepare
         id: prep
         run: |
+          ls -l
           echo $GITHUB_REF
           DOCKER_IMAGE=sxscollaboration/spectrebuildenv_experimental
           VERSION=edge
