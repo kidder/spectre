@@ -49,5 +49,3 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: sxscollaboration/spectrebuildenv_experimental
-          tags: |
-            type=edge,branch=develop
