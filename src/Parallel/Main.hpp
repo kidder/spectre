@@ -34,6 +34,7 @@
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TaggedTuple.hpp"
 #include "Utilities/TypeTraits/CreateGetTypeAliasOrDefault.hpp"
+#include "Utilities/TypeTraits/CreateHasTypeAlias.hpp"
 
 #include "Parallel/Main.decl.h"
 
