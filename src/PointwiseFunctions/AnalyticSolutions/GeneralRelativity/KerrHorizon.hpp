@@ -4,8 +4,10 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 
 #include "DataStructures/Tensor/TypeAliases.hpp"
+#include "Utilities/ConstantExpressions.hpp"
 
 namespace gr {
 namespace Solutions {
@@ -61,6 +63,22 @@ template <typename DataType>
 Scalar<DataType> kerr_horizon_radius(
     const std::array<DataType, 2>& theta_phi, double mass,
     const std::array<double, 3>& dimensionless_spin);
+
+/// Useful analytic quantities for the horizon of an unboosted, spinning black
+/// hole in Kerr-Schild coordinates
+struct KerrHorizon {
+  KerrHorizon(double mass_in,
+              const std::array<double, 3>& dimensionless_spin_in);
+
+  /// Surface area of the horizon
+  double surface_area() { return 4.0 * M_PI * square(equatorial_radius); }
+
+  const double mass;
+  const std::array<double, 3> dimensionless_spin;
+  const double dimensionless_spin_magnitude;
+  const double polar_radius;
+  const double equatorial_radius;
+};
 
 }  // namespace Solutions
 }  // namespace gr

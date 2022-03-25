@@ -3,13 +3,12 @@
 
 #include "PointwiseFunctions/AnalyticSolutions/GeneralRelativity/KerrHorizon.hpp"
 
+#include <array>
 #include <cmath>
 
-#include "DataStructures/DataVector.hpp"                 // IWYU pragma: keep
-#include "DataStructures/Tensor/EagerMath/Magnitude.hpp" // IWYU pragma: keep
+#include "DataStructures/DataVector.hpp"
+#include "DataStructures/Tensor/Tensor.hpp"
 #include "Utilities/ConstantExpressions.hpp"
-#include "Utilities/MakeWithValue.hpp"
-#include "Utilities/StdArrayHelpers.hpp"
 
 namespace gr {
 namespace Solutions {
@@ -18,42 +17,23 @@ template <typename DataType>
 Scalar<DataType> kerr_horizon_radius(
     const std::array<DataType, 2>& theta_phi, const double mass,
     const std::array<double, 3>& dimensionless_spin) {
-  const double spin_magnitude_squared = square(magnitude(dimensionless_spin));
-  const double mass_squared = square(mass);
-
-  const double equatorial_radius_squared =
-      2.0 * mass_squared * (1.0 + sqrt(1.0 - spin_magnitude_squared));
-  const double polar_radius_squared =
-      mass_squared * square(1.0 + sqrt(1.0 - spin_magnitude_squared));
 
   const auto& theta = theta_phi[0];
   const auto& phi = theta_phi[1];
-  const DataType sin_theta = sin(theta);
-  const DataType cos_theta = cos(theta);
-  const DataType sin_phi = sin(phi);
-  const DataType cos_phi = cos(phi);
 
-  auto denominator =
-      make_with_value<DataType>(theta_phi[0], polar_radius_squared);
-  denominator += mass_squared * dimensionless_spin[0] * dimensionless_spin[0] *
-                 square(sin_theta * cos_phi);
-  denominator += mass_squared * dimensionless_spin[1] * dimensionless_spin[1] *
-                 square(sin_theta * sin_phi);
-  denominator += mass_squared * dimensionless_spin[2] * dimensionless_spin[2] *
-                 square(cos_theta);
-  denominator += 2.0 * mass_squared * dimensionless_spin[0] *
-                 dimensionless_spin[1] * square(sin_theta) * sin_phi * cos_phi;
-  denominator += 2.0 * mass_squared * dimensionless_spin[0] *
-                 dimensionless_spin[2] * sin_theta * cos_theta * cos_phi;
-  denominator += 2.0 * mass_squared * dimensionless_spin[1] *
-                 dimensionless_spin[2] * sin_theta * cos_theta * sin_phi;
+  const DataType ax_times_nx =
+      (mass * dimensionless_spin[0]) * sin(theta) * cos(phi);
+  const DataType ay_times_ny =
+      (mass * dimensionless_spin[1]) * sin(theta) * sin(phi);
+  const DataType az_times_nz = (mass * dimensionless_spin[2]) * cos(theta);
 
-  auto radius_squared =
-      make_with_value<DataType>(theta_phi[0], polar_radius_squared);
-  radius_squared *= equatorial_radius_squared;
-  radius_squared /= denominator;
+  KerrHorizon kh{mass, dimensionless_spin};
 
-  return Scalar<DataType>{sqrt(radius_squared)};
+  const DataType denominator =
+      sqrt(square(ax_times_nx + ay_times_ny + az_times_nz) +
+           square(kh.polar_radius));
+
+  return Scalar<DataType>{kh.equatorial_radius * kh.polar_radius / denominator};
 }
 
 template Scalar<DataVector> kerr_horizon_radius(
@@ -64,6 +44,15 @@ template Scalar<double> kerr_horizon_radius(
     const std::array<double, 2>& theta_phi, const double mass,
     const std::array<double, 3>& dimensionless_spin);
 
+KerrHorizon::KerrHorizon(double mass_in,
+                         const std::array<double, 3>& dimensionless_spin_in)
+    : mass(mass_in),
+      dimensionless_spin(dimensionless_spin_in),
+      dimensionless_spin_magnitude(std::hypot(
+          dimensionless_spin[0], dimensionless_spin[1], dimensionless_spin[2])),
+      polar_radius(mass * (1.0 + sqrt((1.0 + dimensionless_spin_magnitude) *
+                                      (1.0 - dimensionless_spin_magnitude)))),
+      equatorial_radius(sqrt(2.0 * mass * polar_radius)) {}
 }  // namespace Solutions
 }  // namespace gr
 

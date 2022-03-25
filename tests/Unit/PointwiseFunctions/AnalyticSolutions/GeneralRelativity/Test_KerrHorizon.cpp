@@ -77,24 +77,30 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.KerrHorizon",
             {{0.1, 0.2, 0.3}})));
 
   // Test for Kerr (mass=2) along pole, for extremal spin not in z direction.
-  // one_minus_eps to make sure we don't get FPE in sqrt(M^2-a^2).
-  const double one_minus_eps = 1.0 - std::numeric_limits<double>::min();
-  Approx numerical_approx = Approx::custom().epsilon(1.e-8).scale(1.0);
-  CHECK(
-      numerical_approx(2.0) ==
-      get(kerr_horizon_radius<double>(
-          {{acos(0.3 / sqrt(0.14)), atan2(0.2, 0.1)}}, 2.0,
-          {{one_minus_eps * 0.1 / sqrt(0.14), one_minus_eps * 0.2 / sqrt(0.14),
-            one_minus_eps * 0.3 / sqrt(0.14)}})));
+  CHECK(approx(2.0) ==
+        get(kerr_horizon_radius<double>(
+            {{acos(0.3 / sqrt(0.14)), atan2(0.2, 0.1)}}, 2.0,
+            {{0.1 / sqrt(0.14), 0.2 / sqrt(0.14), 0.3 / sqrt(0.14)}})));
 
-  // Test for Kerr (mass=2) along equator,
-  // for extremal spin not in z direction.
-  CHECK(
-      numerical_approx(sqrt(8.0)) ==
-      get(kerr_horizon_radius<double>(
-          {{acos(0.3 / sqrt(0.14)) + M_PI_2, atan2(0.2, 0.1)}}, 2.0,
-          {{one_minus_eps * 0.1 / sqrt(0.14), one_minus_eps * 0.2 / sqrt(0.14),
-            one_minus_eps * 0.3 / sqrt(0.14)}})));
+  // Test for Kerr (mass=2) along equator, for extremal spin not in z direction.
+  CHECK(approx(sqrt(8.0)) ==
+        get(kerr_horizon_radius<double>(
+            {{acos(0.3 / sqrt(0.14)) + M_PI_2, atan2(0.2, 0.1)}}, 2.0,
+            {{0.1 / sqrt(0.14), 0.2 / sqrt(0.14), 0.3 / sqrt(0.14)}})));
+
+  KerrHorizon kh_extremal{4.0, {{3.0 / 13.0, 4.0 / 13.0, 12.0 / 13.0}}};
+  CHECK(kh_extremal.mass == 4.0);
+  CHECK(kh_extremal.dimensionless_spin_magnitude == 1.0);
+  CHECK(kh_extremal.polar_radius == 4.0);
+  CHECK(kh_extremal.equatorial_radius == 4.0 * sqrt(2.0));
+  CHECK(approx(kh_extremal.surface_area()) == 128.0 * M_PI);
+
+  KerrHorizon kh{2.0, {{2.4 / 13.0, 3.2 / 13.0, 9.6 / 13.0}}};
+  CHECK(kh.mass == 2.0);
+  CHECK(approx(kh.dimensionless_spin_magnitude) == 0.8);
+  CHECK(kh.polar_radius == 3.2);
+  CHECK(approx(kh.equatorial_radius) == 2.0 * sqrt(3.2));
+  CHECK(approx(kh.surface_area()) == 51.2 * M_PI);
 }
 }  // namespace Solutions
 }  // namespace gr
