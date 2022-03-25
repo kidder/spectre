@@ -1325,7 +1325,6 @@ SPECTRE_ALWAYS_INLINE constexpr decltype(auto) mutate_apply(
   return mutate_apply(F{}, box, std::forward<Args>(args)...);
 }
 /// @}
-}  // namespace db
 
 template <typename TagsList>
 std::ostream& operator<<(std::ostream& os, const db::DataBox<TagsList>& box) {
@@ -1333,3 +1332,4 @@ std::ostream& operator<<(std::ostream& os, const db::DataBox<TagsList>& box) {
   os << box.print_items() << "\n";
   return os;
 }
+}  // namespace db
