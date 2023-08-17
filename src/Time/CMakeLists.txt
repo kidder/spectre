@@ -30,6 +30,7 @@ spectre_target_headers(
   ChooseLtsStepSize.hpp
   EvolutionOrdering.hpp
   History.hpp
+  InterpolateHistory.hpp
   SelfStart.hpp
   Slab.hpp
   TakeStep.hpp
