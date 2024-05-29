@@ -54,7 +54,7 @@ on:
         description: >
           Container to use for builds
         required: false
-        default: 'sxscollaboration/spectre:ci'
+        default: 'kidder/spectre'
   # Allow running this workflow as a job in another workflow. This is used to
   # test a new Docker container before publishing it.
   workflow_call:

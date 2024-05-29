@@ -38,10 +38,10 @@ find_package(Charm ${SPECTRE_REQUIRED_CHARM_VERSION} REQUIRED
   EveryLB
   ${SCOTCHLB_COMPONENT}
   )
-if(CHARM_VERSION VERSION_GREATER 7.0.0)
-  message(WARNING "Builds with Charm++ versions greater than 7.0.0 are \
-considered experimental. Please file any issues you encounter.")
-endif()
+# if(CHARM_VERSION VERSION_GREATER 7.0.0)
+#   message(WARNING "Builds with Charm++ versions greater than 7.0.0 are \
+# considered experimental. Please file any issues you encounter.")
+# endif()
 
 if (USE_SCOTCH_LB)
   target_link_libraries(Charmxx::charmxx INTERFACE Scotch)
