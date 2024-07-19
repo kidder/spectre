@@ -4,7 +4,6 @@
 #include "Evolution/Systems/ScalarWave/TimeDerivative.hpp"
 
 #include <cstddef>
-#include <iostream>
 
 #include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"

@@ -22,17 +22,6 @@ Scalar<DataVector> mass_potential(const Scalar<DataVector>& psi,
   mass_potential(make_not_null(&result), psi, mass);
   return result;
 }
-
+.
 }  // namespace ScalarWave
 
-#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
-
-#define INSTANTIATE(_, data)                                                 \
-  void ScalarWave::mass_potential(gsl::not_null<Scalar<DataVector>*> result, \
-                                  const Scalar<DataVector>& psi,             \
-                                  const double& mass);
-
-GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
-
-#undef INSTANTIATE
-#undef DIM

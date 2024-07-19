@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <iostream>
 #include <memory>
 
 #include "DataStructures/DataBox/DataBox.hpp"
