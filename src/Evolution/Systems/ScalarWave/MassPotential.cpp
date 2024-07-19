@@ -22,6 +22,6 @@ Scalar<DataVector> mass_potential(const Scalar<DataVector>& psi,
   mass_potential(make_not_null(&result), psi, mass);
   return result;
 }
-.
+
 }  // namespace ScalarWave
 
