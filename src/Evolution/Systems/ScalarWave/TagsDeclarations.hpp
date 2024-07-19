@@ -16,6 +16,8 @@ struct ConstraintGamma2;
 
 template <size_t Dim>
 struct OneIndexConstraint;
+struct Gamma2Value;
+struct MassValue;
 template <size_t Dim>
 struct TwoIndexConstraint;
 
@@ -33,6 +35,7 @@ template <size_t Dim>
 struct EvolvedFieldsFromCharacteristicFields;
 template <size_t Dim>
 struct EnergyDensity;
+struct MassPotential;
 template <size_t Dim>
 struct MomentumDensity;
 }  // namespace ScalarWave::Tags

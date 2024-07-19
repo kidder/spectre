@@ -12,7 +12,9 @@
 #include "DataStructures/DataBox/Prefixes.hpp"
 #include "DataStructures/DataBox/Tag.hpp"
 #include "DataStructures/Tensor/TypeAliases.hpp"
+#include "Evolution/Systems/ScalarWave/OptionTags.hpp"
 #include "Evolution/Systems/ScalarWave/TagsDeclarations.hpp"
+#include "Utilities/TMPL.hpp"
 
 class DataVector;
 
@@ -59,6 +61,25 @@ template <size_t Dim>
 struct OneIndexConstraint : db::SimpleTag {
   using type = tnsr::i<DataVector, Dim, Frame::Inertial>;
 };
+
+/// \brief Tag for gamma_2 as a double
+struct Gamma2Value : db::SimpleTag {
+  using type = double;
+  using option_tags = tmpl::list<ScalarWave::OptionTags::Gamma2>;
+
+  static constexpr bool pass_metavariables = false;
+  static double create_from_options(const double gamma2) { return gamma2; }
+};
+
+/// \brief Tag for mass as a double
+struct MassValue : db::SimpleTag {
+  using type = double;
+  using option_tags = tmpl::list<ScalarWave::OptionTags::Mass>;
+
+  static constexpr bool pass_metavariables = false;
+  static double create_from_options(const double mass) { return mass; }
+};
+
 /*!
  * \brief Tag for the two-index constraint of the ScalarWave system
  *
@@ -109,6 +130,11 @@ struct EvolvedFieldsFromCharacteristicFields : db::SimpleTag {
 /// The energy density of the scalar wave
 template <size_t Dim>
 struct EnergyDensity : db::SimpleTag {
+  using type = Scalar<DataVector>;
+};
+
+/// The mass potential of the scalar wave
+struct MassPotential : db::SimpleTag {
   using type = Scalar<DataVector>;
 };
 

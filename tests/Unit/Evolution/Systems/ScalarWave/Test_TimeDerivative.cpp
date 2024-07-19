@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <iostream>
 #include <memory>
 
 #include "DataStructures/DataBox/DataBox.hpp"
@@ -26,6 +27,7 @@
 #include "NumericalAlgorithms/Spectral/Quadrature.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/WaveEquation/PlaneWave.hpp"
 #include "PointwiseFunctions/MathFunctions/Gaussian.hpp"
+#include "PointwiseFunctions/MathFunctions/Sinusoid.hpp"
 #include "Utilities/ConstantExpressions.hpp"
 #include "Utilities/Gsl.hpp"
 #include "Utilities/MakeArray.hpp"
@@ -54,8 +56,9 @@ template <size_t Dim>
 void check_du_dt(const size_t npts, const double time) {
   ScalarWave::Solutions::PlaneWave<Dim> solution(
       make_array<Dim>(0.1), make_array<Dim>(0.0),
-      std::make_unique<MathFunctions::Gaussian<1, Frame::Inertial>>(1.0, 1.0,
-                                                                    0.0));
+      std::make_unique<MathFunctions::Sinusoid<1, Frame::Inertial>>(1.0, 1.0,
+                                                                    0.0),
+      0.1 /*mass*/);
 
   tnsr::I<DataVector, Dim> x = [npts]() {
     auto logical_coords = logical_coordinates(Mesh<Dim>{
@@ -68,21 +71,23 @@ void check_du_dt(const size_t npts, const double time) {
   }();
 
   auto local_check_du_dt = [&npts, &time, &solution, &x](
-                               const double gamma2, const double constraint) {
+                               const double gamma2, const double constraint,
+                               const double mass) {
     auto box = db::create<db::AddSimpleTags<
-        ScalarWave::Tags::ConstraintGamma2, ConstraintGamma2Copy,
-        Tags::dt<ScalarWave::Tags::Psi>, Tags::dt<ScalarWave::Tags::Pi>,
-        Tags::dt<ScalarWave::Tags::Phi<Dim>>, ScalarWave::Tags::Pi,
-        ScalarWave::Tags::Phi<Dim>,
+        ScalarWave::Tags::MassValue, ScalarWave::Tags::ConstraintGamma2,
+        ConstraintGamma2Copy, Tags::dt<ScalarWave::Tags::Psi>,
+        Tags::dt<ScalarWave::Tags::Pi>, Tags::dt<ScalarWave::Tags::Phi<Dim>>,
+        ScalarWave::Tags::Psi, ScalarWave::Tags::Pi, ScalarWave::Tags::Phi<Dim>,
         Tags::deriv<ScalarWave::Tags::Psi, tmpl::size_t<Dim>, Frame::Inertial>,
         Tags::deriv<ScalarWave::Tags::Pi, tmpl::size_t<Dim>, Frame::Inertial>,
         Tags::deriv<ScalarWave::Tags::Phi<Dim>, tmpl::size_t<Dim>,
                     Frame::Inertial>>>(
-        Scalar<DataVector>(pow<Dim>(npts), gamma2),
+        mass, Scalar<DataVector>(pow<Dim>(npts), gamma2),
         Scalar<DataVector>(pow<Dim>(npts), 0.0),
         Scalar<DataVector>(pow<Dim>(npts), 0.0),
         Scalar<DataVector>(pow<Dim>(npts), 0.0),
         tnsr::i<DataVector, Dim, Frame::Inertial>(pow<Dim>(npts), 0.0),
+        Scalar<DataVector>(solution.psi(x, time).get()),
         Scalar<DataVector>(-1.0 * solution.dpsi_dt(x, time).get()),
         add_scalar_to_tensor_components(solution.dpsi_dx(x, time), constraint),
         solution.dpsi_dx(x, time),
@@ -125,6 +130,7 @@ void check_du_dt(const size_t npts, const double time) {
     CHECK_ITERABLE_APPROX(
         db::get<Tags::dt<ScalarWave::Tags::Pi>>(box),
         Scalar<DataVector>(-1.0 * solution.d2psi_dt2(x, time).get()));
+
     CHECK_ITERABLE_APPROX(
         db::get<Tags::dt<ScalarWave::Tags::Phi<Dim>>>(box),
         add_scalar_to_tensor_components(solution.d2psi_dtdx(x, time),
@@ -132,20 +138,20 @@ void check_du_dt(const size_t npts, const double time) {
   };
 
   // Test with constraint damping parameter set to zero
-  local_check_du_dt(0.0, 0.0);
-  local_check_du_dt(0.0, 100.0);
-  local_check_du_dt(0.0, -998.0);
+  local_check_du_dt(0.0, 0.0, 0.1);
+  local_check_du_dt(0.0, 100.0, 0.1);
+  local_check_du_dt(0.0, -998.0, 0.1);
 
   // Test with constraint satisfied but nonzero constraint damping parameter
-  local_check_du_dt(10.0, 0.0);
-  local_check_du_dt(-4.3, 0.0);
+  local_check_du_dt(10.0, 0.0, 0.1);
+  local_check_du_dt(-4.3, 0.0, 0.1);
 
   // Test with one-index constraint NOT satisfied and nonzero constraint
   // damping parameter
-  local_check_du_dt(10.0, 10.9);
-  local_check_du_dt(1.2, -77.0);
-  local_check_du_dt(-10.9, 43.0);
-  local_check_du_dt(-90.0, -56.0);
+  local_check_du_dt(10.0, 10.9, 0.1);
+  local_check_du_dt(1.2, -77.0, 0.1);
+  local_check_du_dt(-10.9, 43.0, 0.1);
+  local_check_du_dt(-90.0, -56.0, 0.1);
 }
 }  // namespace
 

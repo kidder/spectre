@@ -12,6 +12,7 @@ spectre_target_sources(
   Constraints.cpp
   EnergyDensity.cpp
   Equations.cpp
+  MassPotential.cpp
   MomentumDensity.cpp
   TimeDerivative.cpp
   VolumeTermsInstantiation.cpp

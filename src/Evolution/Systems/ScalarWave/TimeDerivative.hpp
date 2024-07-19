@@ -25,8 +25,8 @@ namespace ScalarWave {
 template <size_t Dim>
 struct TimeDerivative {
   using temporary_tags = tmpl::list<Tags::ConstraintGamma2>;
-  using argument_tags =
-      tmpl::list<Tags::Pi, Tags::Phi<Dim>, Tags::ConstraintGamma2>;
+  using argument_tags = tmpl::list<Tags::Psi, Tags::Pi, Tags::Phi<Dim>,
+                                   Tags::ConstraintGamma2, Tags::MassValue>;
 
   static void apply(
       // Time derivatives returned by reference. All the tags in the
@@ -44,8 +44,8 @@ struct TimeDerivative {
       const tnsr::ij<DataVector, Dim, Frame::Inertial>& d_phi,
 
       // Terms list in argument_tags above
-      const Scalar<DataVector>& pi,
+      const Scalar<DataVector>& psi, const Scalar<DataVector>& pi,
       const tnsr::i<DataVector, Dim, Frame::Inertial>& phi,
-      const Scalar<DataVector>& gamma2);
+      const Scalar<DataVector>& gamma2, const double& mass);
 };
 }  // namespace ScalarWave

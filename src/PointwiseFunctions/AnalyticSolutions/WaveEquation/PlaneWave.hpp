@@ -74,7 +74,12 @@ class PlaneWave : public evolution::initial_data::InitialData,
     static constexpr Options::String help = {"The profile of the wave."};
   };
 
-  using options = tmpl::list<WaveVector, Center, Profile>;
+  struct Mass {
+    using type = double;
+    static constexpr Options::String help = {"The mass of the wave."};
+  };
+
+  using options = tmpl::list<WaveVector, Center, Profile, Mass>;
 
   static constexpr Options::String help = {
       "A plane wave solution of the Euclidean wave equation"};
@@ -84,7 +89,8 @@ class PlaneWave : public evolution::initial_data::InitialData,
 
   PlaneWave() = default;
   PlaneWave(std::array<double, Dim> wave_vector, std::array<double, Dim> center,
-            std::unique_ptr<MathFunction<1, Frame::Inertial>> profile);
+            std::unique_ptr<MathFunction<1, Frame::Inertial>> profile,
+            double mass = 0.0);
   PlaneWave(const PlaneWave&);
   PlaneWave& operator=(const PlaneWave&);
   PlaneWave(PlaneWave&&) = default;
@@ -159,6 +165,7 @@ class PlaneWave : public evolution::initial_data::InitialData,
   std::array<double, Dim> wave_vector_{};
   std::array<double, Dim> center_{};
   std::unique_ptr<MathFunction<1, Frame::Inertial>> profile_;
+  double mass_{};
   double omega_{};
 };
 }  // namespace ScalarWave::Solutions

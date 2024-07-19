@@ -4,6 +4,7 @@
 #include "Evolution/Systems/ScalarWave/TimeDerivative.hpp"
 
 #include <cstddef>
+#include <iostream>
 
 #include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
@@ -22,9 +23,9 @@ void TimeDerivative<Dim>::apply(
     const tnsr::i<DataVector, Dim, Frame::Inertial>& d_pi,
     const tnsr::ij<DataVector, Dim, Frame::Inertial>& d_phi,
 
-    const Scalar<DataVector>& pi,
+    const Scalar<DataVector>& psi, const Scalar<DataVector>& pi,
     const tnsr::i<DataVector, Dim, Frame::Inertial>& phi,
-    const Scalar<DataVector>& gamma2) {
+    const Scalar<DataVector>& gamma2, const double& mass) {
   // The constraint damping parameter gamma2 is needed for boundary corrections,
   // which means we need it as a temporary tag in order to project it to the
   // boundary. We prevent slicing/projecting directly from the volume to prevent
@@ -39,6 +40,7 @@ void TimeDerivative<Dim>::apply(
   for (size_t d = 1; d < Dim; ++d) {
     get(*dt_pi) -= d_phi.get(d, d);
   }
+  get(*dt_pi) += square(mass) * get(psi);
   for (size_t d = 0; d < Dim; ++d) {
     dt_phi->get(d) = -d_pi.get(d) + get(gamma2) * (d_psi.get(d) - phi.get(d));
   }

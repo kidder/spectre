@@ -29,6 +29,7 @@
 #include "Evolution/Systems/ScalarWave/EnergyDensity.hpp"
 #include "Evolution/Systems/ScalarWave/Equations.hpp"
 #include "Evolution/Systems/ScalarWave/Initialize.hpp"
+#include "Evolution/Systems/ScalarWave/MassPotential.hpp"
 #include "Evolution/Systems/ScalarWave/MomentumDensity.hpp"
 #include "Evolution/Systems/ScalarWave/System.hpp"
 #include "Evolution/Tags/Filter.hpp"
@@ -153,6 +154,7 @@ struct EvolutionMetavars {
       tmpl::append<typename system::variables_tag::tags_list,
                    typename deriv_compute::type::tags_list, error_tags>,
       ScalarWave::Tags::EnergyDensityCompute<volume_dim>,
+      ScalarWave::Tags::MassPotentialCompute,
       ScalarWave::Tags::MomentumDensityCompute<volume_dim>,
       ScalarWave::Tags::OneIndexConstraintCompute<volume_dim>,
       ScalarWave::Tags::TwoIndexConstraintCompute<volume_dim>,
@@ -306,6 +308,10 @@ struct EvolutionMetavars {
                                           ::ScalarWave::Tags::ConstraintGamma2>,
         evolution::dg::Initialization::ProjectMortars<EvolutionMetavars>,
         evolution::Actions::ProjectRunEventsAndDenseTriggers,
+        ::amr::projectors::CopyFromCreatorOrLeaveAsIs<
+            ScalarWave::Tags::Gamma2Value>,
+        ::amr::projectors::CopyFromCreatorOrLeaveAsIs<
+            ScalarWave::Tags::MassValue>,
         ::amr::projectors::DefaultInitialize<
             Initialization::Tags::InitialTimeDelta,
             Initialization::Tags::InitialSlabSize<local_time_stepping>,

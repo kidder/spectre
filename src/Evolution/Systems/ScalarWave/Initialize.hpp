@@ -33,6 +33,8 @@ namespace Actions {
 template <size_t Dim>
 struct InitializeConstraints {
   using simple_tags = tmpl::list<ScalarWave::Tags::ConstraintGamma2>;
+  using simple_tags_from_options =
+      tmpl::list<ScalarWave::Tags::Gamma2Value, ScalarWave::Tags::MassValue>;
 
   using compute_tags = tmpl::list<>;
 
@@ -46,7 +48,8 @@ struct InitializeConstraints {
       const ArrayIndex& /*array_index*/, const ActionList /*meta*/,
       const ParallelComponent* const /*meta*/) {
     const auto& mesh = db::get<domain::Tags::Mesh<Dim>>(box);
-    Scalar<DataVector> gamma_2{mesh.number_of_grid_points(), 0.};
+    Scalar<DataVector> gamma_2{mesh.number_of_grid_points(),
+                               db::get<ScalarWave::Tags::Gamma2Value>(box)};
 
     Initialization::mutate_assign<simple_tags>(make_not_null(&box),
                                                std::move(gamma_2));

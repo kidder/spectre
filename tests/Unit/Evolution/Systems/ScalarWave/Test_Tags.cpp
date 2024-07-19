@@ -32,4 +32,5 @@ SPECTRE_TEST_CASE("Unit.Evolution.Systems.ScalarWave.Tags",
       "EnergyDensity");
   TestHelpers::db::test_simple_tag<ScalarWave::Tags::MomentumDensity<3>>(
       "MomentumDensity");
+  TestHelpers::db::test_simple_tag<ScalarWave::Tags::MassValue>("MassValue");
 }

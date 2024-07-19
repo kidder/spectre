@@ -19,11 +19,13 @@ namespace ScalarWave::Solutions {
 template <size_t Dim>
 PlaneWave<Dim>::PlaneWave(
     std::array<double, Dim> wave_vector, std::array<double, Dim> center,
-    std::unique_ptr<MathFunction<1, Frame::Inertial>> profile)
+    std::unique_ptr<MathFunction<1, Frame::Inertial>> profile,
+    const double mass)
     : wave_vector_(std::move(wave_vector)),
       center_(std::move(center)),
       profile_(std::move(profile)),
-      omega_(magnitude(wave_vector_)) {}
+      mass_(mass),
+      omega_(sqrt(square(magnitude(wave_vector_)) + square(mass_))) {}
 
 template <size_t Dim>
 PlaneWave<Dim>::PlaneWave(const PlaneWave& other)
@@ -31,13 +33,15 @@ PlaneWave<Dim>::PlaneWave(const PlaneWave& other)
       wave_vector_(other.wave_vector_),
       center_(other.center_),
       profile_(other.profile_->get_clone()),
-      omega_(magnitude(wave_vector_)) {}
+      mass_(other.mass_),
+      omega_(other.omega_) {}
 
 template <size_t Dim>
 PlaneWave<Dim>& PlaneWave<Dim>::operator=(const PlaneWave& other) {
   wave_vector_ = other.wave_vector_;
   center_ = other.center_;
-  omega_ = magnitude(wave_vector_);
+  mass_ = other.mass_;
+  omega_ = other.omega_;
   profile_ = other.profile_->get_clone();
   return *this;
 }
