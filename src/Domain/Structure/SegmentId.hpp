@@ -45,6 +45,8 @@
  */
 class SegmentId {
  public:
+  static constexpr size_t max_refinement_level = 15;
+
   /// Default constructor needed for Charm++ serialization.
   SegmentId() = default;
   SegmentId(const SegmentId& segment_id) = default;
@@ -91,7 +93,6 @@ class SegmentId {
   void pup(PUP::er& p);
 
  private:
-  static constexpr size_t max_refinement_level = 16;
   size_t refinement_level_;
   size_t index_;
 };
@@ -105,9 +106,9 @@ bool operator==(const SegmentId& lhs, const SegmentId& rhs);
 /// Inequivalence operator for SegmentId.
 bool operator!=(const SegmentId& lhs, const SegmentId& rhs);
 
-//##############################################################################
-// INLINE DEFINITIONS
-//##############################################################################
+// #############################################################################
+//  INLINE DEFINITIONS
+// #############################################################################
 
 inline SegmentId SegmentId::id_of_parent() const {
   ASSERT(0 != refinement_level_,
