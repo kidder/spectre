@@ -30,6 +30,7 @@
 #include "Evolution/BoundaryCorrectionTags.hpp"
 #include "Evolution/DiscontinuousGalerkin/BoundaryData.hpp"
 #include "Evolution/DiscontinuousGalerkin/InboxTags.hpp"
+#include "Evolution/DiscontinuousGalerkin/InterfaceDataPolicy.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarData.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarDataHolder.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarTags.hpp"
@@ -127,13 +128,13 @@ void retrieve_boundary_data_spsc(
           auto& [volume_mesh, volume_mesh_ghost_cell_data,
                  boundary_correction_mesh, ghost_cell_data,
                  boundary_correction_data, validity_range, tci_status,
-                 integration_order, interpolated_boundary_data] = data;
+                 integration_order, offsets_of_interpolated_data] = data;
           (void)ghost_cell_data;
           auto& [current_volume_mesh, current_volume_mesh_ghost_cell_data,
                  current_boundary_correction_mesh, current_ghost_cell_data,
                  current_boundary_correction_data, current_validity_range,
                  current_tci_status, current_integration_order,
-                 current_interpolated_boundary_data] = it->second;
+                 current_offsets_of_interpolated_data] = it->second;
           // Need to use when optimizing subcell
           (void)current_volume_mesh_ghost_cell_data;
           // We have already received some data at this time. Receiving
@@ -182,7 +183,7 @@ void retrieve_boundary_data_spsc(
           current_validity_range = validity_range;
           current_tci_status = tci_status;
           current_integration_order = integration_order;
-          current_interpolated_boundary_data = interpolated_boundary_data;
+          current_offsets_of_interpolated_data = offsets_of_interpolated_data;
         } else {
           // We have not received ghost cells or fluxes at this time.
           if (not current_inbox
@@ -328,57 +329,184 @@ bool receive_boundary_data_global_time_stepping(
           const gsl::not_null<DirectionalIdMap<volume_dim, TimeStepId>*>
               mortar_next_time_step_id,
           const gsl::not_null<DirectionalIdMap<volume_dim, Mesh<volume_dim>>*>
-              neighbor_mesh,
-          const Mesh<volume_dim>& volume_mesh) {
-        neighbor_mesh->clear();
+              neighbor_meshes,
+          const Mesh<volume_dim>& volume_mesh,
+          const Element<volume_dim>& element,
+          const DirectionalIdMap<volume_dim, MortarInfo<volume_dim>>&
+              mortar_infos) {
+        neighbor_meshes->clear();
+        std::unordered_set<Direction<volume_dim>>
+            directions_with_multiple_non_conforming_neighbors{};
         for (auto& received_mortar_data :
              received_temporal_id_and_data.second) {
-          const auto& mortar_id = received_mortar_data.first;
-          const size_t sliced_away_dim = mortar_id.direction().dimension();
+          const auto& received_mortar_id = received_mortar_data.first;
+          const auto& direction = received_mortar_id.direction();
+          const auto& neighbor_mesh = received_mortar_data.second.volume_mesh;
+          neighbor_meshes->insert_or_assign(received_mortar_id, neighbor_mesh);
+          // If there are multiple non-conforming neighbors, there is only a
+          // single mortar labeled by the host ElementId.  This is done because
+          // the data from all neighbors will be combined onto a single mortar
+          // as it makes no sense to have multiple mortars between
+          // non-conforming Elements.
+          const DirectionalId<volume_dim> mortar_id =
+              mortar_infos.contains(received_mortar_id)
+                  ? received_mortar_id
+                  : DirectionalId<volume_dim>{direction, element.id()};
+          const size_t sliced_away_dim = direction.dimension();
           const Mesh<volume_dim - 1> face_mesh =
               volume_mesh.slice_away(sliced_away_dim);
-          const Mesh<volume_dim - 1> neighbor_face_mesh =
-              received_mortar_data.second.volume_mesh.slice_away(
-                  sliced_away_dim);
-          const Mesh<volume_dim - 1> mortar_mesh =
-              ::dg::mortar_mesh(face_mesh, neighbor_face_mesh);
-          if (mortar_mesh != mortar_meshes->at(mortar_id)) {
-            mortar_meshes->at(mortar_id) = mortar_mesh;
-            p_project_mortar_data(
-                make_not_null(&mortar_data->at(mortar_id).local()),
-                mortar_mesh);
-          }
-          neighbor_mesh->insert_or_assign(
-              mortar_id, received_mortar_data.second.volume_mesh);
-          mortar_next_time_step_id->at(mortar_id) =
-              received_mortar_data.second.validity_range;
-          ASSERT(using_subcell_v<Metavariables> or
-                     received_mortar_data.second.boundary_correction_data
-                         .has_value(),
-                 "Must receive number boundary correction data when not using "
-                 "DG-subcell. Mortar ID is: ("
-                     << mortar_id.direction() << "," << mortar_id.id()
-                     << ") and TimeStepId is "
-                     << received_temporal_id_and_data.first);
-          if (received_mortar_data.second.boundary_correction_data
-                  .has_value()) {
-            mortar_data->at(mortar_id).neighbor().face_mesh =
-                received_mortar_data.second.volume_mesh.slice_away(
-                    mortar_id.direction().dimension());
-            mortar_data->at(mortar_id).neighbor().mortar_mesh =
-                received_mortar_data.second.boundary_correction_mesh.value();
-            mortar_data->at(mortar_id).neighbor().mortar_data = std::move(
-                received_mortar_data.second.boundary_correction_data.value());
-            if (mortar_mesh !=
-                received_mortar_data.second.boundary_correction_mesh) {
-              p_project_mortar_data(
-                  make_not_null(&mortar_data->at(mortar_id).neighbor()),
-                  mortar_mesh);
+          switch (mortar_infos.at(mortar_id).policy()) {
+            case InterfaceDataPolicy::CopyProject:
+              [[fallthrough]];
+            case InterfaceDataPolicy::OrientCopyProject: {
+              mortar_next_time_step_id->at(mortar_id) =
+                  received_mortar_data.second.validity_range;
+              const Mesh<volume_dim - 1> neighbor_face_mesh =
+                  neighbor_mesh.slice_away(sliced_away_dim);
+              const Mesh<volume_dim - 1> mortar_mesh =
+                  ::dg::mortar_mesh(face_mesh, neighbor_face_mesh);
+              if (mortar_mesh != mortar_meshes->at(mortar_id)) {
+                mortar_meshes->at(mortar_id) = mortar_mesh;
+                p_project_mortar_data(
+                    make_not_null(&mortar_data->at(mortar_id).local()),
+                    mortar_mesh);
+              }
+              ASSERT(
+                  using_subcell_v<Metavariables> or
+                      received_mortar_data.second.boundary_correction_data
+                          .has_value(),
+                  "Must receive number boundary correction data when not using "
+                  "DG-subcell. Mortar ID is: ("
+                      << direction << "," << mortar_id.id()
+                      << ") and TimeStepId is "
+                      << received_temporal_id_and_data.first);
+              if (received_mortar_data.second.boundary_correction_data
+                      .has_value()) {
+                mortar_data->at(mortar_id).neighbor().face_mesh =
+                    received_mortar_data.second.volume_mesh.slice_away(
+                        sliced_away_dim);
+                mortar_data->at(mortar_id).neighbor().mortar_mesh =
+                    received_mortar_data.second.boundary_correction_mesh
+                        .value();
+                mortar_data->at(mortar_id).neighbor().mortar_data =
+                    std::move(received_mortar_data.second
+                                  .boundary_correction_data.value());
+                if (mortar_mesh !=
+                    received_mortar_data.second.boundary_correction_mesh) {
+                  p_project_mortar_data(
+                      make_not_null(&mortar_data->at(mortar_id).neighbor()),
+                      mortar_mesh);
+                }
+              }
+              break;
             }
+            case InterfaceDataPolicy::NonconformingSelfInterpolates: {
+              if constexpr (volume_dim > 1) {
+                mortar_next_time_step_id->at(mortar_id) =
+                    received_mortar_data.second.validity_range;
+                mortar_meshes->at(mortar_id) = face_mesh;
+                mortar_data->at(mortar_id).neighbor().face_mesh = face_mesh;
+                mortar_data->at(mortar_id).neighbor().mortar_mesh = face_mesh;
+                const auto& interpolator =
+                    mortar_infos.at(mortar_id).interpolator().value();
+                const auto& received_data =
+                    received_mortar_data.second.boundary_correction_data
+                        .value();
+                DataVector interpolated_data =
+                    interpolator.interpolate_to_host(received_data);
+                mortar_data->at(mortar_id).neighbor().mortar_data =
+                    std::move(interpolated_data);
+              } else {
+                ERROR("Cannot have non-conforming neighbors in 1D");
+              }
+              break;
+            }
+            case InterfaceDataPolicy::NonconformingNeighborInterpolates: {
+              if constexpr (volume_dim > 1) {
+                const size_t npts_mortar = face_mesh.number_of_grid_points();
+                const size_t mortar_data_size = mortar_data->at(mortar_id)
+                                                    .local()
+                                                    .mortar_data.value()
+                                                    .size();
+                const size_t number_of_components =
+                    mortar_data_size / npts_mortar;
+                // The data received from each neighbor has been interpolated
+                // to a subset of points of the single mortar mesh of the host
+                // If this is the first neighbor processed,
+                if (not directions_with_multiple_non_conforming_neighbors
+                            .contains(direction)) {
+                  directions_with_multiple_non_conforming_neighbors.emplace(
+                      direction);
+                  mortar_next_time_step_id->at(mortar_id) =
+                      received_mortar_data.second.validity_range;
+                  mortar_meshes->at(mortar_id) = face_mesh;
+                  mortar_data->at(mortar_id).neighbor().face_mesh = face_mesh;
+                  mortar_data->at(mortar_id).neighbor().mortar_mesh = face_mesh;
+                  mortar_data->at(mortar_id).neighbor().mortar_data =
+                      DataVector{mortar_data_size,
+                                 std::numeric_limits<double>::signaling_NaN()};
+                }
+                ASSERT(mortar_next_time_step_id->at(mortar_id) ==
+                           received_mortar_data.second.validity_range,
+                       "Inconsistent validity range "
+                           << received_mortar_data.second.validity_range
+                           << " received from " << received_mortar_id
+                           << "; expected "
+                           << mortar_next_time_step_id->at(mortar_id));
+                const auto& interpolated_boundary_data =
+                    received_mortar_data.second.interpolated_boundary_data
+                        .value();
+                const auto& interpolated_data =
+                    interpolated_boundary_data.boundary_data();
+                const size_t interpolated_data_size = interpolated_data.size();
+                const auto& offsets = interpolated_boundary_data.offsets();
+                const size_t npts_interpolated = offsets.size();
+                ASSERT(npts_interpolated * number_of_components ==
+                           interpolated_data_size,
+                       "Size mismatch!  Number of interpolated points "
+                           << npts_interpolated
+                           << " times number of components "
+                           << number_of_components
+                           << " is not interpolated data size "
+                           << interpolated_data_size);
+                auto& target_mortar_data =
+                    mortar_data->at(mortar_id).neighbor().mortar_data.value();
+                for (size_t c = 0; c < number_of_components; ++c) {
+                  for (size_t i = 0; i < npts_interpolated; ++i) {
+                    target_mortar_data[offsets[i] + c * npts_mortar] =
+                        interpolated_data[i + c * npts_interpolated];
+                  }
+                }
+              } else {
+                ERROR("Cannot have non-conforming neighbors in 1D");
+              }
+              break;
+            }
+            default:
+              ERROR("InterfaceDataPolicy "
+                    << mortar_infos.at(mortar_id).policy()
+                    << " is not handled yet, id = " << mortar_id);
           }
         }
+        for (const auto& direction :
+             directions_with_multiple_non_conforming_neighbors) {
+          const DirectionalId<volume_dim> mortar_id =
+              DirectionalId<volume_dim>{direction, element.id()};
+          const auto& target_mortar_data =
+              mortar_data->at(mortar_id).neighbor().mortar_data.value();
+          ASSERT(
+              std::none_of(target_mortar_data.begin(),
+                           target_mortar_data.begin() +
+                               static_cast<ptrdiff_t>(
+                                   volume_mesh.slice_away(direction.dimension())
+                                       .number_of_grid_points()),
+                           [](double v) { return std::isnan(v); }),
+              "Not all points were interpolated");
+        }
       },
-      box, db::get<domain::Tags::Mesh<volume_dim>>(*box));
+      box, db::get<domain::Tags::Mesh<volume_dim>>(*box),
+      db::get<domain::Tags::Element<volume_dim>>(*box),
+      db::get<evolution::dg::Tags::MortarInfo<volume_dim>>(*box));
   return true;
 }
 
@@ -778,8 +906,8 @@ struct ApplyBoundaryCorrections {
          &face_normal_covector_and_magnitude, &mortar_data, &mortar_meshes,
          &mortar_infos, &time_step, &time_stepper, using_gauss_lobatto_points,
          &vars_to_update, &volume_args_tuple, &volume_det_jacobian,
-         &volume_det_inv_jacobian,
-         &volume_mesh](auto* typed_boundary_correction) {
+         &volume_det_inv_jacobian, &volume_mesh,
+         &element](auto* typed_boundary_correction) {
           using BcType = std::decay_t<decltype(*typed_boundary_correction)>;
           // Compute internal boundary quantities on the mortar for sides of
           // the element that have neighbors, i.e. they are not an external
@@ -825,9 +953,9 @@ struct ApplyBoundaryCorrections {
                  &mortar_infos, &neighbor_data_on_mortar,
                  using_gauss_lobatto_points, &volume_args_tuple,
                  &volume_det_jacobian, &volume_det_inv_jacobian,
-                 &volume_dt_correction, &volume_mesh](
-                    const MortarData<volume_dim>& local_mortar_data,
-                    const MortarData<volume_dim>& neighbor_mortar_data)
+                 &volume_dt_correction, &volume_mesh,
+                 &element](const MortarData<volume_dim>& local_mortar_data,
+                           const MortarData<volume_dim>& neighbor_mortar_data)
                 -> DtVariables {
               if (local_time_stepping and not using_gauss_lobatto_points) {
                 // This needs to be updated every call because the Jacobian
@@ -898,8 +1026,10 @@ struct ApplyBoundaryCorrections {
               auto& dt_boundary_correction =
                   [&dt_boundary_correction_on_mortar,
                    &dt_boundary_correction_projected_onto_face, &face_mesh,
-                   &mortar_mesh, &mortar_size]() -> DtVariables& {
-                if (Spectral::needs_projection(face_mesh, mortar_mesh,
+                   &mortar_mesh, &mortar_size, &element,
+                   &direction]() -> DtVariables& {
+                if (element.neighbors().at(direction).are_conforming() and
+                    Spectral::needs_projection(face_mesh, mortar_mesh,
                                                mortar_size)) {
                   dt_boundary_correction_projected_onto_face =
                       ::dg::project_from_mortar(
