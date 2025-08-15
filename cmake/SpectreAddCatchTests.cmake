@@ -219,6 +219,8 @@ function(spectre_parse_file SOURCE_FILE TEST_TARGET)
         set(OUTPUT_REGEX
           "${OUTPUT_REGEX}|### No ASSERT tests in release mode ###")
       endif()
+      message(STATUS
+	"Searching for ${OUTPUT_REGEX} in output of ${CTEST_NAME}\n")
       set_tests_properties(
         ${CTEST_NAME} PROPERTIES
         FAIL_REGULAR_EXPRESSION "No tests ran"
@@ -227,6 +229,7 @@ function(spectre_parse_file SOURCE_FILE TEST_TARGET)
         LABELS "${TAGS}"
         ENVIRONMENT "${_CATCH_TEST_ENV_VARS}")
       set(FAILURE_TESTS "\"~${CTEST_NAME}\";${FAILURE_TESTS}")
+      message(STATUS "Failure tests: ${FAILURE_TESTS}")
     else ()
       set_tests_properties(
         ${CTEST_NAME} PROPERTIES
