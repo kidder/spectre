@@ -8,6 +8,7 @@ set(LIBRARY "EvolutionDgActionsHelpers")
 set(LIBRARY_SOURCES
   InstantiateCons1d.cpp
   InstantiateCons2d.cpp
+  InstantiateNonconformingCons3d.cpp
   InstantiateCons3d.cpp
   InstantiateConsPrim1d.cpp
   InstantiateConsPrim2d.cpp

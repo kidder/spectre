@@ -10,4 +10,6 @@
 namespace TestHelpers::evolution::dg::Actions {
 template <SystemType system_type, bool UsePrims, size_t Dim>
 void test();
+template <SystemType system_type, bool UsePrims, size_t Dim>
+void test_nonconforming();
 }  // namespace TestHelpers::evolution::dg::Actions

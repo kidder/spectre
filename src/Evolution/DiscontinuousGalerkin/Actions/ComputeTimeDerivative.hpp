@@ -34,8 +34,10 @@
 #include "Evolution/DiscontinuousGalerkin/Actions/VolumeTermsImpl.hpp"
 #include "Evolution/DiscontinuousGalerkin/BoundaryData.hpp"
 #include "Evolution/DiscontinuousGalerkin/InboxTags.hpp"
+#include "Evolution/DiscontinuousGalerkin/InterfaceDataPolicy.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarData.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarDataHolder.hpp"
+#include "Evolution/DiscontinuousGalerkin/MortarInfo.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarTags.hpp"
 #include "Evolution/DiscontinuousGalerkin/NormalVectorTags.hpp"
 #include "Evolution/DiscontinuousGalerkin/UsingSubcell.hpp"
@@ -676,6 +678,7 @@ void ComputeTimeDerivative<Dim, EvolutionSystem, DgStepChoosers,
   const auto& all_mortar_data =
       db::get<evolution::dg::Tags::MortarData<Dim>>(*box);
   const auto& mortar_meshes = get<evolution::dg::Tags::MortarMesh<Dim>>(*box);
+  const auto& mortar_info = get<evolution::dg::Tags::MortarInfo<Dim>>(*box);
 
   std::optional<DirectionMap<Dim, DataVector>>
       all_neighbor_data_for_reconstruction = std::nullopt;
@@ -704,26 +707,67 @@ void ComputeTimeDerivative<Dim, EvolutionSystem, DgStepChoosers,
     }
 
     const size_t total_neighbors = neighbors.size();
-    size_t neighbor_count = 1;
+    // If there are multiple non-conforming neighbors, we only create a single
+    // mortar labeled by the host ElementId.  This is done because the data
+    // from all neighbors will be combined onto a single mortar as it makes no
+    // sense to have multiple mortars between non-conforming Elements.
+    const bool has_multiple_non_conforming_neighbors =
+        total_neighbors > 1 and not neighbors.are_conforming();
+   size_t neighbor_count = 1;
     for (const auto& neighbor : neighbors) {
       const auto& orientation = neighbors.orientation(neighbor);
       const auto direction_from_neighbor = orientation(direction.opposite());
-      const DirectionalId<Dim> mortar_id{direction, neighbor};
+      const DirectionalId<Dim> mortar_id{
+          direction,
+          has_multiple_non_conforming_neighbors ? element.id() : neighbor};
 
       const Mesh<Dim - 1>& mortar_mesh = mortar_meshes.at(mortar_id);
-      const auto volume_mesh_for_neighbor = orientation(volume_mesh);
-      const auto mortar_mesh_for_neighbor =
-          orient_mesh_on_slice(mortar_mesh, direction.dimension(), orientation);
+      auto volume_mesh_for_neighbor = volume_mesh;
+      auto mortar_mesh_for_neighbor = mortar_mesh;
       DataVector neighbor_boundary_data_on_mortar{};
+      std::optional<InterpolatedBoundaryData<Dim>> interpolated_boundary_data{
+          std::nullopt};
 
-      if (LIKELY(orientation.is_aligned())) {
-        neighbor_boundary_data_on_mortar =
-            *all_mortar_data.at(mortar_id).local().mortar_data.value();
-      } else {
-        const auto& slice_extents = mortar_mesh.extents();
-        neighbor_boundary_data_on_mortar = orient_variables_on_slice(
-            all_mortar_data.at(mortar_id).local().mortar_data.value(),
-            slice_extents, direction.dimension(), orientation);
+      switch (mortar_info.at(mortar_id).policy()) {
+        case InterfaceDataPolicy::CopyProject:
+          [[fallthrough]];
+        case InterfaceDataPolicy::NonconformingNeighborInterpolates:
+          neighbor_boundary_data_on_mortar =
+              *all_mortar_data.at(mortar_id).local().mortar_data.value();
+          break;
+        case InterfaceDataPolicy::OrientCopyProject: {
+          volume_mesh_for_neighbor = orientation(volume_mesh);
+          mortar_mesh_for_neighbor = orient_mesh_on_slice(
+              mortar_mesh, direction.dimension(), orientation);
+          const auto& slice_extents = mortar_mesh.extents();
+          neighbor_boundary_data_on_mortar = orient_variables_on_slice(
+              all_mortar_data.at(mortar_id).local().mortar_data.value(),
+              slice_extents, direction.dimension(), orientation);
+          break;
+        }
+        case InterfaceDataPolicy::NonconformingSelfInterpolates: {
+          if constexpr (Dim > 1) {
+            neighbor_boundary_data_on_mortar =
+                *all_mortar_data.at(mortar_id).local().mortar_data.value();
+            const auto& interpolator =
+                mortar_info.at(mortar_id).interpolator().value();
+            const auto& host_data =
+                *all_mortar_data.at(mortar_id).local().mortar_data.value();
+            neighbor_boundary_data_on_mortar =
+                interpolator.interpolate_to_neighbor(host_data);
+            interpolated_boundary_data = InterpolatedBoundaryData<Dim>{
+                {.data = interpolator.interpolate_to_neighbor(host_data),
+                 .target_mesh = interpolator.neighbor_mortar_mesh(),
+                 .offsets = interpolator.interpolated_neighbor_data_offsets()}};
+          } else {
+            ERROR("Cannot have non-conforming neighbors in 1D");
+          }
+          break;
+        }
+        default:
+          ERROR("InterfaceDataPolicy "
+                << mortar_info.at(mortar_id).policy()
+                << " is not handled yet, id = " << mortar_id);
       }
 
       const TimeStepId& next_time_step_id =
@@ -741,7 +785,7 @@ void ComputeTimeDerivative<Dim, EvolutionSystem, DgStepChoosers,
                         next_time_step_id,
                         tci_decision,
                         integration_order,
-                        std::nullopt};
+                        interpolated_boundary_data};
       } else {
         data = SendData{volume_mesh_for_neighbor,
                         ghost_data_mesh,
@@ -751,7 +795,7 @@ void ComputeTimeDerivative<Dim, EvolutionSystem, DgStepChoosers,
                         next_time_step_id,
                         tci_decision,
                         integration_order,
-                        std::nullopt};
+                        interpolated_boundary_data};
       }
 
       // Send mortar data (the `std::tuple` named `data`) to neighbor
