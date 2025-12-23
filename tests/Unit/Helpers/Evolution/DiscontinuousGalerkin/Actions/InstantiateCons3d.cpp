@@ -3,7 +3,8 @@
 
 #include "Framework/TestingFramework.hpp"
 
-#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/ComputeTimeDerivativeImpl.tpp"
+#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/ComputeTimeDerivative.tpp"
+#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/SystemType.hpp"
 
 namespace TestHelpers::evolution::dg::Actions {
 template void test<SystemType::Conservative, false, 3>();

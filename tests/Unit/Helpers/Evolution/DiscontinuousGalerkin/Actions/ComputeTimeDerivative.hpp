@@ -3,10 +3,13 @@
 
 #pragma once
 
-#include <iosfwd>
+#include <cstddef>
 
 namespace TestHelpers::evolution::dg::Actions {
-enum class SystemType { Conservative, Nonconservative, Mixed };
+/// \cond
+enum class SystemType;
+/// \endcond
 
-std::ostream& operator<<(std::ostream& os, SystemType t);
+template <SystemType system_type, bool UsePrims, size_t Dim>
+void test();
 }  // namespace TestHelpers::evolution::dg::Actions
