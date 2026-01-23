@@ -10,6 +10,6 @@ namespace TestHelpers::evolution::dg::Actions {
 enum class SystemType;
 /// \endcond
 
-template <SystemType system_type, bool UsePrims, size_t Dim>
+template <size_t Dim, SystemType system_type, bool UsePrims>
 void test();
 }  // namespace TestHelpers::evolution::dg::Actions

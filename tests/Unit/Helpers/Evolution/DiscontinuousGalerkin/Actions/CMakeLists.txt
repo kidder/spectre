@@ -23,6 +23,7 @@ set(LIBRARY_SOURCES
   # InstantiateNoncons2d.cpp
   # InstantiateNoncons3d.cpp
   SystemType.cpp
+  Variables.cpp
   )
 
 add_spectre_library(${LIBRARY} ${SPECTRE_TEST_LIBS_TYPE} ${LIBRARY_SOURCES})

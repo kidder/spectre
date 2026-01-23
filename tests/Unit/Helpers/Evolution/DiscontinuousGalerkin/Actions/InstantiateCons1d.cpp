@@ -7,5 +7,5 @@
 #include "Helpers/Evolution/DiscontinuousGalerkin/Actions/SystemType.hpp"
 
 namespace TestHelpers::evolution::dg::Actions {
-template void test<SystemType::Conservative, false, 1>();
+template void test<1, SystemType::Conservative, false>();
 }  // namespace TestHelpers::evolution::dg::Actions

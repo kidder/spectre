@@ -18,7 +18,7 @@ std::unique_ptr<DomainCreator<Dim>> domain_creator() {
   if constexpr (Dim == 1) {
     return std::make_unique<domain::creators::RotatedIntervals>(
         std::array{-3.0}, std::array{1.5}, std::array{2.0}, std::array{0_st},
-        std::array<std::array<size_t, 2>, 1>{std::array{12_st, 12_st}},
+        std::array<std::array<size_t, 2>, 1>{std::array{7_st, 7_st}},
         std::make_unique<BoundaryCondition<1>>(),
         std::make_unique<BoundaryCondition<1>>(), nullptr);
   }
@@ -26,17 +26,17 @@ std::unique_ptr<DomainCreator<Dim>> domain_creator() {
     return std::make_unique<domain::creators::RotatedRectangles>(
         std::array{-3.0, -2.0}, std::array{1.5, 4.5}, std::array{2.0, 7.0},
         std::array{0_st, 0_st},
-        std::array<std::array<size_t, 2>, 2>{std::array{6_st, 6_st},
-                                             std::array{6_st, 6_st}},
+        std::array<std::array<size_t, 2>, 2>{std::array{7_st, 8_st},
+                                             std::array{7_st, 8_st}},
         std::make_unique<BoundaryCondition<2>>());
   }
   if constexpr (Dim == 3) {
     return std::make_unique<domain::creators::RotatedBricks>(
         std::array{-3.0, -2.0, -1.0}, std::array{1.5, 4.5, 2.5},
         std::array{2.0, 7.0, 3.0}, std::array{0_st, 0_st, 0_st},
-        std::array<std::array<size_t, 2>, 3>{std::array{6_st, 6_st},
-                                             std::array{6_st, 6_st},
-                                             std::array{6_st, 6_st}},
+        std::array<std::array<size_t, 2>, 3>{std::array{7_st, 8_st},
+                                             std::array{7_st, 8_st},
+                                             std::array{7_st, 8_st}},
         std::make_unique<BoundaryCondition<Dim>>());
   }
 }

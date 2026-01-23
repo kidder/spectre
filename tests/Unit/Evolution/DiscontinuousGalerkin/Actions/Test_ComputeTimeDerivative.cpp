@@ -10,9 +10,9 @@ namespace {
 template <TestHelpers::evolution::dg::Actions::SystemType system_type,
           bool UsePrims>
 void test() {
-  TestHelpers::evolution::dg::Actions::test<system_type, UsePrims, 1>();
-  // TestHelpers::evolution::dg::Actions::test<system_type, UsePrims, 2>();
-  // TestHelpers::evolution::dg::Actions::test<system_type, UsePrims, 3>();
+  TestHelpers::evolution::dg::Actions::test<1, system_type, UsePrims>();
+  // TestHelpers::evolution::dg::Actions::test<2, system_type, UsePrims>();
+  // TestHelpers::evolution::dg::Actions::test<3, system_type, UsePrims>();
 }
 }  // namespace
 
