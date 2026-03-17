@@ -63,7 +63,7 @@ class None final : public TimeDependence<MeshDim> {
       const -> std::vector<std::unique_ptr<domain::CoordinateMapBase<
           Frame::Distorted, Frame::Inertial, MeshDim>>> override;
 
-  [[noreturn]] auto functions_of_time(
+  auto functions_of_time(
       const std::unordered_map<std::string, double>& initial_expiration_times =
           {}) const
       -> std::unordered_map<

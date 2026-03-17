@@ -8,9 +8,12 @@
 #include <memory>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/TaggedContainers.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
+#include "DataStructures/Variables.hpp"
 #include "DataStructures/VariablesTag.hpp"
 #include "Evolution/BoundaryCorrection.hpp"
+#include "Evolution/PassVariables.hpp"
 #include "Helpers/Evolution/DiscontinuousGalerkin/Actions/Variables.hpp"
 #include "Time/Tags/Time.hpp"
 #include "Utilities/Gsl.hpp"
@@ -147,14 +150,57 @@ struct ConservativeTimeDerivativeTerms {
 };
 
 template <size_t Dim>
+struct ConservativeTimeDerivativeTermsWithVariables
+    : public ::evolution::PassVariables,
+      private ConservativeTimeDerivativeTerms<Dim> {
+  using base = ConservativeTimeDerivativeTerms<Dim>;
+
+  using temporary_tags = typename base::temporary_tags;
+  using argument_tags = typename base::argument_tags;
+
+  using dt_var1 = ::Tags::dt<Var1>;
+  using dt_var2 = ::Tags::dt<Var2<Dim>>;
+  using flux_var1 = ::Tags::Flux<Var1, tmpl::size_t<Dim>, Frame::Inertial>;
+  using flux_var2 = ::Tags::Flux<Var2<Dim>, tmpl::size_t<Dim>, Frame::Inertial>;
+
+  /// [dt_con_variables]
+  static ::evolution::dg::TimeDerivativeDecisions<Dim> apply(
+      // Time derivatives returned by reference. All the tags in the
+      // variables_tag in the system struct.
+      const gsl::not_null<Variables<tmpl::list<dt_var1, dt_var2>>*> dt_vars,
+
+      // Fluxes returned by reference. Listed in the system struct as
+      // flux_variables.
+      const gsl::not_null<Variables<tmpl::list<flux_var1, flux_var2>>*>
+          flux_vars,
+
+      // Temporaries returned by reference. Listed in temporary_tags above.
+      const gsl::not_null<Variables<tmpl::list<Var4>>*> temporaries,
+
+      // Arguments listed in argument_tags above
+      const Scalar<DataVector>& var1,
+      const tnsr::I<DataVector, Dim, Frame::Inertial>& var2,
+      const Scalar<DataVector>& source1,
+      const tnsr::I<DataVector, Dim, Frame::Inertial>& source2) {
+    // just forward to other implementation to reduce code duplication
+    base::apply(get<dt_var1>(dt_vars), get<dt_var2>(dt_vars),
+                get<flux_var1>(flux_vars), get<flux_var2>(flux_vars),
+                get<Var4>(temporaries), var1, var2, source1, source2);
+    return {true};
+  }
+};
+
+template <size_t Dim, bool PassVariables>
 struct ConservativeSystem {
   static constexpr size_t volume_dim = Dim;
   static constexpr bool has_primitive_and_conservative_vars = false;
   using boundary_conditions_base =
       domain::BoundaryConditions::BoundaryCondition;
   using boundary_correction = ConservativeBoundaryCorrection<Dim>;
-  using compute_volume_time_derivative_terms =
-      ConservativeTimeDerivativeTerms<Dim>;
+  using compute_volume_time_derivative_terms = tmpl::conditional_t<
+      PassVariables,
+      ConservativeTimeDerivativeTermsWithVariables<Dim>,
+      ConservativeTimeDerivativeTerms<Dim>>;
   using flux_variables = tmpl::list<Var1, Var2<Dim>>;
   using gradient_variables = tmpl::list<>;
   using variables_tag = Tags::Variables<tmpl::list<Var1, Var2<Dim>>>;

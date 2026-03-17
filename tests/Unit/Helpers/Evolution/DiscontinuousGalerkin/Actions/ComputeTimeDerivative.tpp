@@ -13,6 +13,9 @@
 #include "Domain/BoundaryConditions/BoundaryCondition.hpp"
 #include "Domain/Creators/DomainCreator.hpp"
 #include "Domain/Creators/RegisterDerivedWithCharm.hpp"
+#include "Domain/Creators/TimeDependence/RegisterDerivedWithCharm.hpp"
+#include "Domain/Creators/TimeDependence/UniformTranslation.hpp"
+#include "Domain/FunctionsOfTime/RegisterDerivedWithCharm.hpp"
 #include "Domain/InterfaceLogicalCoordinates.hpp"
 #include "Domain/Structure/Direction.hpp"
 #include "Domain/Structure/DirectionMap.hpp"
@@ -66,18 +69,21 @@ void print_databox_items(const Runner& runner, const ElementId<Dim>& id) {
   Parallel::printf("%s\n", box.print_items());
 }
 
-template <size_t Dim>
+template <bool UseMovingMesh, size_t Dim>
 void check_dt_evolved_vars(
     const Mesh<Dim>& mesh, const tnsr::I<DataVector, Dim, Frame::Inertial>& x,
     const double t,
     const Variables<tmpl::list<::Tags::dt<Var1>, ::Tags::dt<Var2<Dim>>>>&
         dt_evolved_vars) {
   Variables<tmpl::list<::Tags::dt<Var1>, ::Tags::dt<Var2<Dim>>>>
-      expected_dt_evolved_vars{mesh.number_of_grid_points()};
-  Var1::dt_value(make_not_null(&get<Tags::dt<Var1>>(expected_dt_evolved_vars)),
-                 x, t);
-  Var2<Dim>::dt_value(
-      make_not_null(&get<Tags::dt<Var2<Dim>>>(expected_dt_evolved_vars)), x, t);
+        expected_dt_evolved_vars{mesh.number_of_grid_points(), 0.0};
+  if constexpr (not UseMovingMesh) {
+    Var1::dt_value(
+        make_not_null(&get<Tags::dt<Var1>>(expected_dt_evolved_vars)), x, t);
+    Var2<Dim>::dt_value(
+        make_not_null(&get<Tags::dt<Var2<Dim>>>(expected_dt_evolved_vars)),
+        x, t);
+  }
   const auto approx = Approx::custom().scale(1.0).epsilon(1.e-12);
   CHECK_VARIABLES_CUSTOM_APPROX(dt_evolved_vars, expected_dt_evolved_vars,
                                 approx);
@@ -93,52 +99,107 @@ tnsr::I<DataVector, Dim, Frame::Inertial> inertial_interface_coordinates(
       element_map(interface_logical_coordinates(mesh, direction)));
 }
 
-template <typename System, size_t Dim>
+template <typename System, bool LocalTimeStepping, typename HistoryMap,
+          typename NormalsMap, size_t Dim>
 void check_mortar_data_and_inboxes(
     const DirectionalIdMap<Dim, ::evolution::dg::MortarDataHolder<Dim>>&
         mortar_data,
+    const HistoryMap& mortar_data_history,
     const DirectionalIdMap<Dim, ::evolution::dg::BoundaryData<Dim>>&
         boundary_data,
+    const NormalsMap& normal_covector_and_magnitude,
+    const Mesh<Dim>& volume_mesh,
     const DirectionalIdMap<Dim, Mesh<Dim - 1>>& mortar_meshes,
+    const DirectionalIdMap<Dim, Mesh<Dim>>& neighbor_meshes,
     const ElementMap<Dim, Frame::Grid>& element_map,
     const domain::CoordinateMapBase<Frame::Grid, Frame::Inertial, Dim>&
         coordinate_map,
+    const TimeStepId& time_step_id,
+    const TimeStepId& next_time_step_id,
     const double t) {
+  if constexpr (not LocalTimeStepping) {
+    REQUIRE(mortar_data_history.size() == 0);
+  }
   for (const auto& [mortar_id, mortar_data_holder] : mortar_data) {
     CAPTURE(mortar_id);
-    const auto& local_mortar_data = mortar_data_holder.local();
-    CAPTURE(local_mortar_data);
-    REQUIRE(local_mortar_data.mortar_data.has_value());
     const auto& mortar_mesh = mortar_meshes.at(mortar_id);
     const auto x = inertial_interface_coordinates(
         mortar_mesh, mortar_id.direction(), element_map, coordinate_map);
     auto expected_mortar_data_vars =
         System::boundary_correction::expected_mortar_data(x, t);
     DataVector expected_mortar_data(expected_mortar_data_vars.data(),
-				    expected_mortar_data_vars.size());
-    CHECK_ITERABLE_APPROX(local_mortar_data.mortar_data.value(),
-                          expected_mortar_data);
-    const ::evolution::dg::BoundaryData<Dim>& received_data =
-        boundary_data.at(mortar_id);
-    REQUIRE(received_data.boundary_correction_data.has_value());
-    CHECK_ITERABLE_APPROX(received_data.boundary_correction_data.value(),
-			  expected_mortar_data);
+                                    expected_mortar_data_vars.size());
+
+    const auto& local_mortar_data = mortar_data_holder.local();
+    CAPTURE(local_mortar_data);
+    if constexpr (LocalTimeStepping) {
+      REQUIRE(not local_mortar_data.mortar_data.has_value());
+      REQUIRE(not local_mortar_data.mortar_mesh.has_value());
+      REQUIRE(not local_mortar_data.face_mesh.has_value());
+      const auto& boundary_history = mortar_data_history.at(mortar_id);
+      const auto& lts_mortar_data = boundary_history.local().data(time_step_id);
+      CAPTURE(lts_mortar_data);
+      REQUIRE(lts_mortar_data.mortar_data.has_value());
+      CHECK_ITERABLE_APPROX(lts_mortar_data.mortar_data.value(),
+                            expected_mortar_data);
+      REQUIRE(lts_mortar_data.mortar_mesh.has_value());
+      CHECK(lts_mortar_data.mortar_mesh.value() == mortar_mesh);
+      REQUIRE(lts_mortar_data.face_mesh.has_value());
+      CHECK(lts_mortar_data.face_mesh.value() ==
+            volume_mesh.slice_away(mortar_id.direction().dimension()));
+      REQUIRE(lts_mortar_data.face_normal_magnitude.has_value());
+      const auto& expected_magnitude =
+          get<::evolution::dg::Tags::MagnitudeOfNormal>(
+           normal_covector_and_magnitude.at(mortar_id.direction()).value());
+      CHECK(lts_mortar_data.face_normal_magnitude == expected_magnitude);
+      REQUIRE(not lts_mortar_data.face_det_jacobian.has_value());
+      REQUIRE(not lts_mortar_data.volume_det_inv_jacobian.has_value());
+      REQUIRE(not lts_mortar_data.volume_mesh.has_value());
+
+    } else {
+      REQUIRE(local_mortar_data.mortar_data.has_value());
+      CHECK_ITERABLE_APPROX(local_mortar_data.mortar_data.value(),
+                            expected_mortar_data);
+      REQUIRE(local_mortar_data.mortar_mesh.has_value());
+      CHECK(local_mortar_data.mortar_mesh.value() == mortar_mesh);
+      REQUIRE(local_mortar_data.face_mesh.has_value());
+      CHECK(local_mortar_data.face_mesh.value() ==
+            volume_mesh.slice_away(mortar_id.direction().dimension()));
+    }
     REQUIRE(not local_mortar_data.face_normal_magnitude.has_value());
     REQUIRE(not local_mortar_data.face_det_jacobian.has_value());
     REQUIRE(not local_mortar_data.volume_det_inv_jacobian.has_value());
-    REQUIRE(local_mortar_data.face_mesh.has_value());
     REQUIRE(not local_mortar_data.volume_mesh.has_value());
+
+    const ::evolution::dg::BoundaryData<Dim>& received_data =
+        boundary_data.at(mortar_id);
+    CAPTURE(received_data);
+    CHECK(received_data.volume_mesh == neighbor_meshes.at(mortar_id));
+    REQUIRE(not received_data.volume_mesh_ghost_cell_data.has_value());
+    REQUIRE(received_data.boundary_correction_mesh.has_value());
+    CHECK(received_data.boundary_correction_mesh.value() == mortar_mesh);
+    REQUIRE(not received_data.ghost_cell_data.has_value());
+    REQUIRE(received_data.boundary_correction_data.has_value());
+    CHECK_ITERABLE_APPROX(received_data.boundary_correction_data.value(),
+                          expected_mortar_data);
+    CHECK(received_data.validity_range == next_time_step_id);
+    CHECK(received_data.tci_status == 0 );
+    CHECK(received_data.integration_order == 1);
+    REQUIRE(not received_data.interpolated_boundary_data.has_value());
   }
 }
 
 template <typename Metavariables>
 ActionTesting::MockRuntimeSystem<Metavariables> make_runner(
     const DomainCreator<Metavariables::volume_dim>& domain_creator,
-    const double initial_dt, const ::dg::Formulation dg_formulation) {
+    const double initial_dt, const ::dg::Formulation dg_formulation,
+    const domain::creators::time_dependence::TimeDependence<
+        Metavariables::volume_dim>& time_dependence) {
   std::unique_ptr<typename Metavariables::TimeStepperBase> time_stepper =
       std::make_unique<TimeSteppers::AdamsBashforth>(5);
   using boundary_correction =
       typename Metavariables::system::boundary_correction;
+  auto functions_of_time = time_dependence.functions_of_time();
   if constexpr (Metavariables::local_time_stepping) {
     std::vector<std::unique_ptr<StepChooser<StepChooserUse::LtsStep>>>
         step_choosers;
@@ -149,12 +210,13 @@ ActionTesting::MockRuntimeSystem<Metavariables> make_runner(
         {std::move(time_stepper), std::move(domain_creator.create_domain()),
          dg_formulation, std::make_unique<boundary_correction>(),
          domain_creator.external_boundary_conditions(), minimum_time_step,
-         std::move(step_choosers)}};
+         std::move(step_choosers)}, {std::move(functions_of_time)}};
   } else {
     return ActionTesting::MockRuntimeSystem<Metavariables>{
         {std::move(time_stepper), std::move(domain_creator.create_domain()),
          dg_formulation, std::make_unique<boundary_correction>(),
-         domain_creator.external_boundary_conditions()}};
+         domain_creator.external_boundary_conditions()},
+         {std::move(functions_of_time)}};
   }
 }
 
@@ -222,9 +284,26 @@ void test_impl(const ::dg::Formulation dg_formulation,
   CAPTURE(UseNodegroupDgElements);
   CAPTURE(dg_formulation);
   CAPTURE(quadrature);
+  CAPTURE(wave::c_s);
+  CAPTURE(wave::k<Dim>);
 
   domain::creators::register_derived_with_charm();
-  const auto creator = domain_creator<Dim>();
+  domain::creators::time_dependence::register_derived_with_charm();
+  domain::FunctionsOfTime::register_derived_with_charm();
+
+  std::unique_ptr<domain::creators::time_dependence::TimeDependence<Dim>>
+    time_dependence{nullptr};
+  if constexpr (UseMovingMesh) {
+    time_dependence =
+        std::make_unique<
+        domain::creators::time_dependence::UniformTranslation<Dim>>(
+        1.0, make_array<Dim>(0.5));
+  } else {
+    time_dependence =
+      std::make_unique<domain::creators::time_dependence::None<Dim>>();
+  }
+
+  const auto creator = domain_creator(*time_dependence);
   const auto domain = creator->create_domain();
   const size_t num_blocks = domain.blocks().size();
 
@@ -237,7 +316,8 @@ void test_impl(const ::dg::Formulation dg_formulation,
   const double initial_dt = 0.5;
 
   auto runner =
-      make_runner<metavariables>(*creator, initial_dt, dg_formulation);
+      make_runner<metavariables>(*creator, initial_dt, dg_formulation,
+                                 *time_dependence);
 
   using component = Component<metavariables>;
 
@@ -304,7 +384,7 @@ void test_impl(const ::dg::Formulation dg_formulation,
                 "Please put each tag in untested_tags in the appropriate list "
                 "for tested_tags");
   const auto items_before = copy_items<tags_for_unchanged_items>(first_box);
-  size_t number_of_element_external_boundaries = 0; 
+  size_t number_of_element_external_boundaries = 0;
   for (size_t b = 0; b < num_blocks; ++b) {
     ElementId<Dim> element_id{b};
     ActionTesting::next_action<component>(make_not_null(&runner), element_id);
@@ -319,7 +399,7 @@ void test_impl(const ::dg::Formulation dg_formulation,
         number_of_element_external_boundaries);
   for (size_t b = 0; b < num_blocks; ++b) {
     ElementId<Dim> element_id{b};
-    //    print_databox_items<component>(runner, element_id);
+//    print_databox_items<component>(runner, element_id);
     const auto& box = get_databox<component>(runner, element_id);
     const auto& x =
         db::get<domain::Tags::Coordinates<Dim, Frame::Inertial>>(box);
@@ -328,9 +408,12 @@ void test_impl(const ::dg::Formulation dg_formulation,
     const auto& dt_evolved_vars =
         ActionTesting::get_databox_tag<component, dt_variables_tag>(runner,
                                                                     element_id);
-    check_dt_evolved_vars(mesh, x, t, dt_evolved_vars);
+    check_dt_evolved_vars<UseMovingMesh>(mesh, x, t, dt_evolved_vars);
     const auto& mortar_data =
         db::get<::evolution::dg::Tags::MortarData<Dim>>(box);
+    const auto& mortar_data_history =
+        db::get<::evolution::dg::Tags::MortarDataHistory<
+            Dim, typename dt_variables_tag::type>>(box);
     const auto& time_step_id = db::get<Tags::TimeStepId>(box);
     const auto& boundary_data =
         ActionTesting::get_inbox_tag<
@@ -338,33 +421,32 @@ void test_impl(const ::dg::Formulation dg_formulation,
             ::evolution::dg::Tags::BoundaryCorrectionAndGhostCellsInbox<
                 Dim, UseNodegroupDgElements>>(runner, element_id)
             .messages.at(time_step_id);
+    const auto& normal_covector_and_magnitude =
+        db::get<::evolution::dg::Tags::NormalCovectorAndMagnitude<Dim>>(box);
     const auto& mortar_meshes =
         db::get<::evolution::dg::Tags::MortarMesh<Dim>>(box);
+    const auto& neighbor_meshes = db::get<domain::Tags::NeighborMesh<Dim>>(box);
     const auto& element_map =
         db::get<domain::Tags::ElementMap<Dim, Frame::Grid>>(box);
     const auto& coordinate_map =
         db::get<domain::CoordinateMaps::Tags::CoordinateMap<Dim, Frame::Grid,
                                                             Frame::Inertial>>(
             box);
-    check_mortar_data_and_inboxes<System>(
-        mortar_data, boundary_data, mortar_meshes, element_map,
-        coordinate_map, t);
-    // const auto& normal_covector_and_magnitude =
-    //     db::get<::evolution::dg::Tags::NormalCovectorAndMagnitude<Dim>>(box);
-     //    check_normal_covector_and_magnitude();
-    // const auto& mortar_data_history =
-    //     db::get<::evolution::dg::Tags::MortarDataHistory<
-    //         Dim, typename dt_variables_tag::type>>(box);
-    //    check_mortar_data_history();
+    const auto& next_time_step_id = db::get<Tags::Next<Tags::TimeStepId>>(box);
+    check_mortar_data_and_inboxes<System, LocalTimeStepping>(
+        mortar_data, mortar_data_history, boundary_data,
+        normal_covector_and_magnitude, mesh, mortar_meshes,
+        neighbor_meshes, element_map, coordinate_map, time_step_id,
+        next_time_step_id, t);
   }
 }
 
-template <SystemType system_type, bool UsePrims, size_t Dim>
+template <SystemType system_type, bool UsePrims, size_t Dim, bool PassVariables>
 struct SystemHelper;
 
-template <size_t Dim>
-struct SystemHelper<SystemType::Conservative, false, Dim> {
-  using type = ConservativeSystem<Dim>;
+template <size_t Dim, bool PassVariables>
+struct SystemHelper<SystemType::Conservative, false, Dim, PassVariables> {
+  using type = ConservativeSystem<Dim, PassVariables>;
 };
 
 template <size_t Dim, typename System, bool LocalTimeStepping,
@@ -383,8 +465,8 @@ template <size_t Dim, typename System, bool LocalTimeStepping,
 void test_dg_formulation() {
   test_quadrature<Dim, System, LocalTimeStepping, UseMovingMesh, PassVariables,
             UseNodegroupDgElements>(::dg::Formulation::StrongInertial);
-  // test_quadrature<Dim, System, LocalTimeStepping, UseMovingMesh, PassVariables,
-  //           UseNodegroupDgElements>(::dg::Formulation::WeakInertial);
+  test_quadrature<Dim, System, LocalTimeStepping, UseMovingMesh, PassVariables,
+             UseNodegroupDgElements>(::dg::Formulation::WeakInertial);
 }
 
 template <size_t Dim, typename System, bool LocalTimeStepping,
@@ -392,32 +474,39 @@ template <size_t Dim, typename System, bool LocalTimeStepping,
 void test_use_node_groups() {
   test_dg_formulation<Dim, System, LocalTimeStepping, UseMovingMesh,
                       PassVariables, false>();
+  // Action testing framework does not support node groups, so we cannot
+  // currently test this branch...
   // test_dg_formulation<Dim, System, LocalTimeStepping, UseMovingMesh,
   // PassVariables, true>();
 }
 
-template <size_t Dim, typename System, bool LocalTimeStepping,
-          bool UseMovingMesh>
+template <size_t Dim, SystemType system_type, bool UsePrims,
+          bool LocalTimeStepping, bool UseMovingMesh>
 void test_pass_variables() {
-  test_use_node_groups<Dim, System, LocalTimeStepping, UseMovingMesh, false>();
-  //  test_use_node_groups<Dim, System, LocalTimeStepping, UseMovingMesh, true>();
+  test_use_node_groups<Dim,
+      typename SystemHelper<system_type, UsePrims, Dim, false>::type,
+      LocalTimeStepping, UseMovingMesh, false>();
+  test_use_node_groups<Dim,
+      typename SystemHelper<system_type, UsePrims, Dim, true>::type,
+      LocalTimeStepping, UseMovingMesh, true>();
 }
 
-template <size_t Dim, typename System, bool LocalTimeStepping>
+template <size_t Dim, SystemType system_type, bool UsePrims,
+          bool LocalTimeStepping>
 void test_moving_mesh() {
-  test_pass_variables<Dim, System, LocalTimeStepping, false>();
-  //  test_pass_variables<Dim, System, LocalTimeStepping, true>();
+  test_pass_variables<Dim, system_type, UsePrims, LocalTimeStepping, false>();
+  test_pass_variables<Dim, system_type, UsePrims, LocalTimeStepping, true>();
 }
 
-template <size_t Dim, typename System>
+template <size_t Dim, SystemType system_type, bool UsePrims>
 void test_lts() {
-  test_moving_mesh<Dim, System, false>();
-  //  test_moving_mesh<Dim, System, true>();
+  test_moving_mesh<Dim, system_type, UsePrims, false>();
+  test_moving_mesh<Dim, system_type, UsePrims, true>();
 }
 }  // namespace
 
 template <size_t Dim, SystemType system_type, bool UsePrims>
 void test() {
-  test_lts<Dim, typename SystemHelper<system_type, UsePrims, Dim>::type>();
+  test_lts<Dim, system_type, UsePrims>();
 }
 }  // namespace TestHelpers::evolution::dg::Actions
