@@ -348,6 +348,7 @@ std::ostream& operator<<(
 
   for (size_t entry = 0; entry < iters.size(); ++entry) {
     os << "t=" << iters[entry]->update << ": ";
+    os << "t_x=" << iters[entry]->expiration << ": ";
     for (size_t i = 0; i < MaxDeriv; ++i) {
       os << gsl::at(iters[entry]->data, i) << " ";
     }

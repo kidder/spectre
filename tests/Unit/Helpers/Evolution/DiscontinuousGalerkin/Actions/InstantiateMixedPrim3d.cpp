@@ -3,8 +3,10 @@
 
 #include "Framework/TestingFramework.hpp"
 
-#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/ComputeTimeDerivativeImpl.tpp"
+#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/ComputeTimeDerivative.tpp"
+#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/MixedSystemWithPrims.hpp"
 
 namespace TestHelpers::evolution::dg::Actions {
-template void test<SystemType::Mixed, true, 3>();
+template void test<3, MixedSystemWithPrims<3, false>>();
+template void test<3, MixedSystemWithPrims<3, true>>();
 }  // namespace TestHelpers::evolution::dg::Actions

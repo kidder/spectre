@@ -3,8 +3,10 @@
 
 #include "Framework/TestingFramework.hpp"
 
-#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/ComputeTimeDerivativeImpl.tpp"
+#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/ComputeTimeDerivative.tpp"
+#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/ConservativeSystemWithPrims.hpp"
 
 namespace TestHelpers::evolution::dg::Actions {
-template void test<SystemType::Conservative, true, 3>();
+template void test<3, ConservativeSystemWithPrims<3, false>>();
+template void test<3, ConservativeSystemWithPrims<3, true>>();
 }  // namespace TestHelpers::evolution::dg::Actions

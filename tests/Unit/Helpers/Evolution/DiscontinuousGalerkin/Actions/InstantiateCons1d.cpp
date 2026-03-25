@@ -1,10 +1,10 @@
 // Distributed under the MIT License.
 // See LICENSE.txt for details.
 
-#include "Framework/TestingFramework.hpp"
-
-#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/ComputeTimeDerivativeImpl.tpp"
+#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/ComputeTimeDerivative.tpp"
+#include "Helpers/Evolution/DiscontinuousGalerkin/Actions/ConservativeSystem.hpp"
 
 namespace TestHelpers::evolution::dg::Actions {
-template void test<SystemType::Conservative, false, 1>();
+template void test<1, ConservativeSystem<1, false>>();
+template void test<1, ConservativeSystem<1, true>>();
 }  // namespace TestHelpers::evolution::dg::Actions
