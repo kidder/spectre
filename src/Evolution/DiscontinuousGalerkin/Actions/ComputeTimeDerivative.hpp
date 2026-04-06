@@ -700,7 +700,7 @@ void ComputeTimeDerivative<Dim, EvolutionSystem, DgStepChoosers,
   }
 
   for (const auto& [direction, neighbors] : element.neighbors()) {
-    DataVector ghost_and_subcell_data{};
+    std::optional<DataVector> ghost_and_subcell_data = std::nullopt;
     if constexpr (using_subcell_v<Metavariables>) {
       ASSERT(all_neighbor_data_for_reconstruction.has_value(),
              "Trying to do DG-subcell but the ghost and subcell data for the "

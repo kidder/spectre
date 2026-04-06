@@ -21,5 +21,6 @@ target_link_libraries(
   )
 
 add_subdirectory(Domain)
+add_subdirectory(Evolution)
 add_subdirectory(IO)
 add_subdirectory(PointwiseFunctions)
