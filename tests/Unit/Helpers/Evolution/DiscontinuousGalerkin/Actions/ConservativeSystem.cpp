@@ -40,12 +40,12 @@ ConservativeBoundaryCorrection<Dim>::expected_mortar_data(
       make_not_null(&get<::Tags::NormalDotFlux<Var2<Dim>>>(result)),
       normal_covector, x, t, sign);
   TempVar::value(make_not_null(&get<TempVar>(result)), x, t);
-  Parallel::printf("---- Expected ----------------------------------------\n");
-  Parallel::printf("Result = %s\n", result);
-  Parallel::printf("n = %s\n", normal_covector);
-  Parallel::printf("x = %s\n", x);
-  Parallel::printf("t = %f\n", t);
-  Parallel::printf("------------------------------------------------------\n");
+  // Parallel::printf("---- Expected--------------------------------------\n");
+  // Parallel::printf("Result = %s\n", result);
+  // Parallel::printf("n = %s\n", normal_covector);
+  // Parallel::printf("x = %s\n", x);
+  // Parallel::printf("t = %f\n", t);
+  // Parallel::printf("--------------------------------------------------\n");
   return result;
 }
 
@@ -68,41 +68,33 @@ double ConservativeBoundaryCorrection<Dim>::dg_package_data(
 
     const tnsr::i<DataVector, Dim, Frame::Inertial>& normal_covector,
     const std::optional<tnsr::I<DataVector, Dim, Frame::Inertial>>&
-        mesh_velocity,
-    const std::optional<Scalar<DataVector>>& normal_dot_mesh_velocity,
-    const double time) {
+    /*mesh_velocity*/,
+    const std::optional<Scalar<DataVector>>& /*normal_dot_mesh_velocity*/,
+    const double /*time*/) {
   *out_normal_dot_flux_var1 = dot_product(flux_var1, normal_covector);
-  // if (normal_dot_mesh_velocity.has_value()) {
-  //   get(*out_normal_dot_flux_var1) -=
-  //       get(var1) * get(normal_dot_mesh_velocity.value());
-  // }
   for (size_t i = 0; i < Dim; ++i) {
     out_normal_dot_flux_var2->get(i) =
-        flux_var2.get(i, 0) * normal_covector.get(0);
+        flux_var2.get(0, i) * normal_covector.get(0);
     for (size_t j = 1; j < Dim; ++j) {
       out_normal_dot_flux_var2->get(i) +=
-          flux_var2.get(i, j) * normal_covector.get(j);
+          flux_var2.get(j, i) * normal_covector.get(j);
     }
-    // if (normal_dot_mesh_velocity.has_value()) {
-    //   out_normal_dot_flux_var2->get(i) -=
-    //       var2.get(i) * get(normal_dot_mesh_velocity.value());
-    // }
   }
   *out_var1 = var1;
   *out_var2 = var2;
   *out_temp_var = temp_var;
-  Parallel::printf("---- Packaged ----------------------------------------\n");
-  Parallel::printf("flux1 = %s\n", flux_var1);
-  Parallel::printf("flux2 = %s\n", flux_var2);
-  Parallel::printf("out_n_dot_flux1 = %s\n", *out_normal_dot_flux_var1);
-  Parallel::printf("out_n_dot_flux2 = %s\n", *out_normal_dot_flux_var2);
-  Parallel::printf("var1 = %s\n", var1);
-  Parallel::printf("var2 = %s\n", var2);
-  Parallel::printf("temp = %s\n", temp_var);
-  Parallel::printf("n_dot_v = %s\n", normal_dot_mesh_velocity);
-  Parallel::printf("v = %s\n", mesh_velocity);
-  Parallel::printf("t = %f\n", time);
-  Parallel::printf("------------------------------------------------------\n");
+  // Parallel::printf("---- Packaged--------------------------------------\n");
+  // Parallel::printf("flux1 = %s\n", flux_var1);
+  // Parallel::printf("flux2 = %s\n", flux_var2);
+  // Parallel::printf("out_n_dot_flux1 = %s\n", *out_normal_dot_flux_var1);
+  // Parallel::printf("out_n_dot_flux2 = %s\n", *out_normal_dot_flux_var2);
+  // Parallel::printf("var1 = %s\n", var1);
+  // Parallel::printf("var2 = %s\n", var2);
+  // Parallel::printf("temp = %s\n", temp_var);
+  // Parallel::printf("n_dot_v = %s\n", normal_dot_mesh_velocity);
+  // Parallel::printf("v = %s\n", mesh_velocity);
+  // Parallel::printf("t = %f\n", time);
+  // Parallel::printf("---------------------------------------------------\n");
   return std::numeric_limits<double>::signaling_NaN();
 }
 

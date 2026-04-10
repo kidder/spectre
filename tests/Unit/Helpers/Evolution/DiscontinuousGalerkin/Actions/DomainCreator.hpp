@@ -16,7 +16,7 @@ struct TimeDependence;
 /// \endcond
 
 namespace TestHelpers::evolution::dg::Actions {
-template <size_t Dim>
+template <bool BlocksAreConforming, size_t Dim>
 std::unique_ptr<DomainCreator<Dim>> domain_creator(
     const domain::creators::time_dependence::TimeDependence<Dim>&
         time_dependence);

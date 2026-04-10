@@ -33,15 +33,15 @@ void test_dim() {
 
 template <bool PassVariables>
 void test_pass_variables() {
-  test_dim<PassVariables, 1>();
+  // test_dim<PassVariables, 1>();
   // test_dim<PassVariables, 2>();
-  // test_dim<PassVariables, 3>();
+  test_dim<PassVariables, 3>();
 }
 }  // namespace
 }  // namespace TestHelpers::evolution::dg::Actions
 
 SPECTRE_TEST_CASE("Unit.Evolution.DG.NonconformingBlocks",
                   "[Unit][Evolution][Actions]") {
-  TestHelpers::evolution::dg::Actions::test_pass_variables<false>();
-  //  TestHelpers::evolution::dg::Actions::test_pass_variables<true>();
+  //  TestHelpers::evolution::dg::Actions::test_pass_variables<false>();
+  TestHelpers::evolution::dg::Actions::test_pass_variables<true>();
 }

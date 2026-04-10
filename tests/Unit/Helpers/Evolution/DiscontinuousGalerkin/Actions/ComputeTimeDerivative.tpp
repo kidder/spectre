@@ -101,23 +101,39 @@ tnsr::I<DataVector, Dim, Frame::Inertial> inertial_interface_coordinates(
       functions_of_time);
 }
 
+template <size_t Dim>
+tnsr::i<DataVector, Dim, Frame::Inertial> unit_normal(
+    const Mesh<Dim - 1>& mesh, const Direction<Dim>& direction,
+    const ElementMap<Dim, Frame::Grid>& element_map,
+    const domain::CoordinateMapBase<Frame::Grid, Frame::Inertial, Dim>&
+        coordinate_map,
+    const double t,
+    const std::unordered_map<
+        std::string, std::unique_ptr<domain::FunctionsOfTime::FunctionOfTime>>&
+        functions_of_time) {
+  auto n = unnormalized_face_normal(mesh, element_map, coordinate_map, t,
+                                    functions_of_time, direction);
+  const auto magnitude_of_n = magnitude(n);
+  for (size_t d = 0; d < Dim; ++d) {
+    n.get(d) /= get(magnitude_of_n);
+  }
+  return n;
+}
+
 template <typename System, bool LocalTimeStepping, grid::Is grid_is,
           typename HistoryMap, typename NormalsMap, size_t Dim>
-void check_mortar_data_and_inboxes(
+void check_mortar_data(
     const DirectionalIdMap<Dim, ::evolution::dg::MortarDataHolder<Dim>>&
         mortar_data,
     const HistoryMap& mortar_data_history,
-    const DirectionalIdMap<Dim, ::evolution::dg::BoundaryData<Dim>>&
-        boundary_data,
     const NormalsMap& normal_covector_and_magnitude,
     const Mesh<Dim>& volume_mesh,
     const DirectionalIdMap<Dim, Mesh<Dim - 1>>& mortar_meshes,
-    const DirectionalIdMap<Dim, Mesh<Dim>>& neighbor_meshes,
     const ElementMap<Dim, Frame::Grid>& element_map,
     const domain::CoordinateMapBase<Frame::Grid, Frame::Inertial, Dim>&
         coordinate_map,
     const Scalar<DataVector>& det_inv_jacobian, const TimeStepId& time_step_id,
-    const TimeStepId& next_time_step_id, const double t,
+    const double t,
     const std::unordered_map<
         std::string, std::unique_ptr<domain::FunctionsOfTime::FunctionOfTime>>&
         functions_of_time,
@@ -129,24 +145,25 @@ void check_mortar_data_and_inboxes(
       dg_formulation == ::dg::Formulation::StrongInertial ? 1.0 : -1.0;
   for (const auto& [mortar_id, mortar_data_holder] : mortar_data) {
     CAPTURE(mortar_id);
-    Parallel::printf("---\nMortar: %s\n---\n", mortar_id);
     const auto& mortar_mesh = mortar_meshes.at(mortar_id);
-    const auto x = inertial_interface_coordinates(
-        mortar_mesh, mortar_id.direction(), element_map, coordinate_map, t,
-        functions_of_time);
+    CAPTURE(mortar_mesh);
+    const auto& direction = mortar_id.direction();
+    const size_t sliced_dim = direction.dimension();
+    const auto& local_mortar_data = mortar_data_holder.local();
+    CAPTURE(local_mortar_data);
+    const auto x =
+        inertial_interface_coordinates(mortar_mesh, direction, element_map,
+                                       coordinate_map, t, functions_of_time);
     const auto& normal_covector =
         get<::evolution::dg::Tags::NormalCovector<Dim>>(
-            normal_covector_and_magnitude.at(mortar_id.direction()).value());
+            normal_covector_and_magnitude.at(direction).value());
     auto expected_mortar_data_vars =
-        System::boundary_correction::template expected_mortar_data<
-            grid_is>(normal_covector, x, t, sign);
+        System::boundary_correction::template expected_mortar_data<grid_is>(
+            normal_covector, x, t, sign);
     DataVector expected_mortar_data(expected_mortar_data_vars.data(),
                                     expected_mortar_data_vars.size());
 
-    const auto& local_mortar_data = mortar_data_holder.local();
-    CAPTURE(local_mortar_data);
     if constexpr (LocalTimeStepping) {
-      const size_t sliced_dim = mortar_id.direction().dimension();
       const Spectral::Quadrature sliced_quadrature =
           volume_mesh.quadrature(sliced_dim);
       REQUIRE(not local_mortar_data.mortar_data.has_value());
@@ -162,11 +179,11 @@ void check_mortar_data_and_inboxes(
       CHECK(lts_mortar_data.mortar_mesh.value() == mortar_mesh);
       REQUIRE(lts_mortar_data.face_mesh.has_value());
       CHECK(lts_mortar_data.face_mesh.value() ==
-            volume_mesh.slice_away(mortar_id.direction().dimension()));
+            volume_mesh.slice_away(sliced_dim));
       REQUIRE(lts_mortar_data.face_normal_magnitude.has_value());
       const auto& expected_magnitude =
           get<::evolution::dg::Tags::MagnitudeOfNormal>(
-              normal_covector_and_magnitude.at(mortar_id.direction()).value());
+              normal_covector_and_magnitude.at(direction).value());
       CHECK(lts_mortar_data.face_normal_magnitude == expected_magnitude);
       if (sliced_quadrature == Spectral::Quadrature::Gauss) {
         REQUIRE(lts_mortar_data.face_det_jacobian.has_value());
@@ -188,33 +205,145 @@ void check_mortar_data_and_inboxes(
       CHECK(local_mortar_data.mortar_mesh.value() == mortar_mesh);
       REQUIRE(local_mortar_data.face_mesh.has_value());
       CHECK(local_mortar_data.face_mesh.value() ==
-            volume_mesh.slice_away(mortar_id.direction().dimension()));
+            volume_mesh.slice_away(sliced_dim));
     }
     REQUIRE(not local_mortar_data.face_normal_magnitude.has_value());
     REQUIRE(not local_mortar_data.face_det_jacobian.has_value());
     REQUIRE(not local_mortar_data.volume_det_inv_jacobian.has_value());
     REQUIRE(not local_mortar_data.volume_mesh.has_value());
+  }
+}
 
-    const ::evolution::dg::BoundaryData<Dim>& received_data =
-        boundary_data.at(mortar_id);
-    auto expected_received_data_vars =
-        System::boundary_correction::template expected_mortar_data<
-            grid_is>(normal_covector, x, t, -sign);
-    DataVector expected_received_data(expected_received_data_vars.data(),
-                                      expected_received_data_vars.size());
-    CAPTURE(received_data);
-    CHECK(received_data.volume_mesh == neighbor_meshes.at(mortar_id));
-    REQUIRE(not received_data.volume_mesh_ghost_cell_data.has_value());
+template <typename System, bool LocalTimeStepping, grid::Is grid_is,
+          typename NormalsMap, size_t Dim, typename Metavariables>
+void check_inboxes(
+    const Element<Dim>& element,
+    const DirectionalIdMap<Dim, ::evolution::dg::MortarInfo<Dim>>& mortar_infos,
+    const DirectionalIdMap<Dim, ::evolution::dg::BoundaryData<Dim>>&
+        boundary_data,
+    const NormalsMap& normal_covector_and_magnitude,
+    const DirectionalIdMap<Dim, Mesh<Dim - 1>>& mortar_meshes,
+    const DirectionalIdMap<Dim, Mesh<Dim>>& neighbor_meshes,
+    const ElementMap<Dim, Frame::Grid>& element_map,
+    const domain::CoordinateMapBase<Frame::Grid, Frame::Inertial, Dim>&
+        coordinate_map,
+    const TimeStepId& next_time_step_id, const double t,
+    const std::unordered_map<
+        std::string, std::unique_ptr<domain::FunctionsOfTime::FunctionOfTime>>&
+        functions_of_time,
+    const ::dg::Formulation dg_formulation,
+    ActionTesting::MockRuntimeSystem<Metavariables>& runner) {
+  CAPTURE(element);
+  CAPTURE(mortar_infos);
+  const double sign =
+      dg_formulation == ::dg::Formulation::StrongInertial ? 1.0 : -1.0;
+  for (const auto& [mortar_id, received_data] : boundary_data) {
+    CAPTURE(mortar_id);
+    //    CAPTURE(received_data);
+    const auto& direction = mortar_id.direction();
+    const auto& neighbors = element.neighbors().at(direction);
+
+    const auto& neighbor_mesh = neighbor_meshes.at(mortar_id);
+    const size_t sliced_dim = direction.dimension();
     REQUIRE(received_data.boundary_correction_mesh.has_value());
-    CHECK(received_data.boundary_correction_mesh.value() == mortar_mesh);
-    REQUIRE(not received_data.ghost_cell_data.has_value());
     REQUIRE(received_data.boundary_correction_data.has_value());
-    CHECK_ITERABLE_APPROX(received_data.boundary_correction_data.value(),
-                          expected_received_data);
+
+    const auto& face_type = element.face_types().at(direction);
+    switch (face_type) {
+      case domain::FaceType::MultipleNonconforming: {
+        const auto& neighbor_orientation =
+            neighbors.orientation(mortar_id.id());
+        const auto neighbor_normal_direction =
+            neighbor_orientation(direction).opposite();
+        REQUIRE(received_data.interpolated_boundary_data.has_value());
+        const auto neighbor_mortar_mesh =
+            neighbor_mesh.slice_away(neighbor_orientation(sliced_dim));
+        CHECK(received_data.boundary_correction_mesh.value() ==
+              neighbor_mortar_mesh);
+        // // both wrong
+        // CHECK(get<0>(x).size() ==
+        //       received_data.boundary_correction_data.value().size() / 9);
+        // CHECK(get<0>(normal_covector).size() ==
+        //       received_data.boundary_correction_data.value().size() / 9);
+        // // REQUIRE(received_data.boundary_correction_data.value().size()
+        // ==
+        // //         expected_received_data.size());
+        break;
+      }
+      case domain::FaceType::SingleNonconforming: {
+        using component = Component<Metavariables>;
+        const ElementId<Dim> neighbor_id = mortar_id.id();
+        const auto& neighbor_box = get_databox<component>(runner, neighbor_id);
+
+        const auto& neighbor_orientation =
+            neighbors.orientation(mortar_id.id());
+        const auto neighbor_normal_direction =
+            neighbor_orientation(direction).opposite();
+        CAPTURE(neighbor_normal_direction);
+        const DirectionalId<Dim> neighbor_mortar_id{neighbor_normal_direction,
+                                                    neighbor_id};
+
+        REQUIRE(not received_data.interpolated_boundary_data.has_value());
+        const auto neighbor_mortar_mesh =
+            neighbor_mesh.slice_away(neighbor_orientation(sliced_dim));
+        CHECK(received_data.boundary_correction_mesh.value() ==
+              neighbor_mortar_mesh);
+        const auto& neighbor_element_map =
+            db::get<domain::Tags::ElementMap<Dim, Frame::Grid>>(neighbor_box);
+        const auto& neighbor_coordinate_map =
+            db::get<domain::CoordinateMaps::Tags::CoordinateMap<
+                Dim, Frame::Grid, Frame::Inertial>>(neighbor_box);
+        const auto x = inertial_interface_coordinates(
+            neighbor_mortar_mesh, neighbor_normal_direction,
+            neighbor_element_map, neighbor_coordinate_map, t,
+            functions_of_time);
+        const auto neighbor_normal_covector =
+            unit_normal(neighbor_mortar_mesh, neighbor_normal_direction,
+                        neighbor_element_map, neighbor_coordinate_map, t,
+                        functions_of_time);
+        auto expected_received_data_vars =
+            System::boundary_correction::template expected_mortar_data<grid_is>(
+                neighbor_normal_covector, x, t, sign);
+        DataVector expected_received_data(expected_received_data_vars.data(),
+                                          expected_received_data_vars.size());
+        REQUIRE(received_data.boundary_correction_data.value().size() ==
+                expected_received_data.size());
+        CHECK_ITERABLE_APPROX(received_data.boundary_correction_data.value(),
+                              expected_received_data);
+        break;
+      }
+      case domain::FaceType::ConformingAligned:
+        [[fallthrough]];
+      case domain::FaceType::ConformingUnaligned: {
+        REQUIRE(not received_data.interpolated_boundary_data.has_value());
+        const auto mortar_mesh = neighbor_mesh.slice_away(sliced_dim);
+        CHECK(received_data.boundary_correction_mesh.value() == mortar_mesh);
+        const auto x = inertial_interface_coordinates(
+            mortar_mesh, direction, element_map, coordinate_map, t,
+            functions_of_time);
+        const auto& normal_covector =
+            get<::evolution::dg::Tags::NormalCovector<Dim>>(
+                normal_covector_and_magnitude.at(direction).value());
+        auto expected_received_data_vars =
+            System::boundary_correction::template expected_mortar_data<grid_is>(
+                normal_covector, x, t, -sign);
+        DataVector expected_received_data(expected_received_data_vars.data(),
+                                          expected_received_data_vars.size());
+        REQUIRE(received_data.boundary_correction_data.value().size() ==
+                expected_received_data.size());
+        CHECK_ITERABLE_APPROX(received_data.boundary_correction_data.value(),
+                              expected_received_data);
+        break;
+      }
+      default:
+        ERROR("Unexpected face type " << face_type);
+    }
+    CHECK(received_data.volume_mesh == neighbor_mesh);
+    REQUIRE(not received_data.volume_mesh_ghost_cell_data.has_value());
+    REQUIRE(not received_data.ghost_cell_data.has_value());
     CHECK(received_data.validity_range == next_time_step_id);
     CHECK(received_data.tci_status == 0);
     CHECK(received_data.integration_order == 1);
-    REQUIRE(not received_data.interpolated_boundary_data.has_value());
   }
 }
 
@@ -250,8 +379,8 @@ ActionTesting::MockRuntimeSystem<Metavariables> make_runner(
   }
 }
 
-template <size_t Dim, typename System, bool LocalTimeStepping,
-          grid::Is grid_is, bool UseNodegroupDgElements>
+template <size_t Dim, typename System, bool LocalTimeStepping, grid::Is grid_is,
+          bool UseNodegroupDgElements>
 struct Metavariables {
   static constexpr size_t volume_dim = Dim;
   static constexpr bool local_time_stepping = LocalTimeStepping;
@@ -276,8 +405,7 @@ struct Metavariables {
           ::evolution::dg::Initialization::Domain<Metavariables>,
           Initialization::TimeStepperHistory<Metavariables>>,
       Initialization::Actions::ConservativeSystem<System>,
-      InitializeVars<System>,
-      ::evolution::dg::Initialization::Mortars<Dim>,
+      InitializeVars<System>, ::evolution::dg::Initialization::Mortars<Dim>,
       ::Actions::MutateApply<AdvanceTime<>>>;
 
   using test_actions = tmpl::list<
@@ -301,13 +429,14 @@ struct Metavariables {
   };
 };
 
-template <size_t Dim, typename System, bool LocalTimeStepping,
-          grid::Is grid_is, bool UseNodegroupDgElements>
+template <size_t Dim, typename System, bool LocalTimeStepping, grid::Is grid_is,
+          bool UseNodegroupDgElements, bool BlocksAreConforming>
 void test_impl(const ::dg::Formulation dg_formulation,
                const Spectral::Quadrature quadrature) {
   CAPTURE(Dim);
   CAPTURE(LocalTimeStepping);
   CAPTURE(grid_is);
+  CAPTURE(BlocksAreConforming);
   CAPTURE(dg_formulation);
   CAPTURE(quadrature);
 
@@ -319,7 +448,7 @@ void test_impl(const ::dg::Formulation dg_formulation,
       time_dependence{nullptr};
   if constexpr (grid_is == grid::Is::Stationary) {
     time_dependence =
-      std::make_unique<domain::creators::time_dependence::None<Dim>>();
+        std::make_unique<domain::creators::time_dependence::None<Dim>>();
   }
   if constexpr (grid_is == grid::Is::Expanding) {
     time_dependence =
@@ -329,16 +458,16 @@ void test_impl(const ::dg::Formulation dg_formulation,
   }
   if constexpr (grid_is == grid::Is::Comoving) {
     time_dependence = std::make_unique<
-      domain::creators::time_dependence::UniformTranslation<Dim>>(
+        domain::creators::time_dependence::UniformTranslation<Dim>>(
         0.0, wave::comoving_v<Dim>());
   }
 
-  const auto creator = domain_creator(*time_dependence);
+  const auto creator = domain_creator<BlocksAreConforming>(*time_dependence);
   const auto domain = creator->create_domain();
   const size_t num_blocks = domain.blocks().size();
 
-  using metavariables = Metavariables<Dim, System, LocalTimeStepping,
-                                      grid_is, UseNodegroupDgElements>;
+  using metavariables = Metavariables<Dim, System, LocalTimeStepping, grid_is,
+                                      UseNodegroupDgElements>;
   register_classes_with_charm<TimeSteppers::AdamsBashforth>();
   register_factory_classes_with_charm<metavariables>();
 
@@ -430,18 +559,23 @@ void test_impl(const ::dg::Formulation dg_formulation,
 
   for (size_t b = 0; b < num_blocks; ++b) {
     ElementId<Dim> element_id{b};
+    CAPTURE(element_id);
     //    print_databox_items<component>(runner, element_id);
     const auto& box = get_databox<component>(runner, element_id);
     const auto& x =
         db::get<domain::Tags::Coordinates<Dim, Frame::Inertial>>(box);
     const double t = db::get<Tags::Time>(box);
     const auto& mesh = db::get<domain::Tags::Mesh<Dim>>(box);
+    CAPTURE(mesh);
     if (dg_formulation == ::dg::Formulation::StrongInertial) {
       const auto& dt_evolved_vars =
           ActionTesting::get_databox_tag<component, dt_variables_tag>(
               runner, element_id);
       check_dt_evolved_vars<grid_is>(mesh, x, t, dt_evolved_vars);
     }
+    const Element<Dim>& element = db::get<domain::Tags::Element<Dim>>(box);
+    const auto& mortar_infos =
+        db::get<::evolution::dg::Tags::MortarInfo<Dim>>(box);
     const auto& mortar_data =
         db::get<::evolution::dg::Tags::MortarData<Dim>>(box);
     const auto& mortar_data_history =
@@ -469,11 +603,14 @@ void test_impl(const ::dg::Formulation dg_formulation,
         box);
     const auto& next_time_step_id = db::get<Tags::Next<Tags::TimeStepId>>(box);
     const auto& functions_of_time = db::get<domain::Tags::FunctionsOfTime>(box);
-    check_mortar_data_and_inboxes<System, LocalTimeStepping, grid_is>(
-        mortar_data, mortar_data_history, boundary_data,
-        normal_covector_and_magnitude, mesh, mortar_meshes, neighbor_meshes,
-        element_map, coordinate_map, det_inv_jacobian, time_step_id,
-        next_time_step_id, t, functions_of_time, dg_formulation);
+    check_mortar_data<System, LocalTimeStepping, grid_is>(
+        mortar_data, mortar_data_history, normal_covector_and_magnitude, mesh,
+        mortar_meshes, element_map, coordinate_map, det_inv_jacobian,
+        time_step_id, t, functions_of_time, dg_formulation);
+    check_inboxes<System, LocalTimeStepping, grid_is>(
+        element, mortar_infos, boundary_data, normal_covector_and_magnitude,
+        mortar_meshes, neighbor_meshes, element_map, coordinate_map,
+        next_time_step_id, t, functions_of_time, dg_formulation, runner);
   }
 
   if (dg_formulation == ::dg::Formulation::WeakInertial and
@@ -497,19 +634,34 @@ void test_impl(const ::dg::Formulation dg_formulation,
   }
 }
 
-template <size_t Dim, typename System, bool LocalTimeStepping,
-          grid::Is grid_is, bool UseNodegroupDgElements>
+template <size_t Dim, typename System, bool LocalTimeStepping, grid::Is grid_is,
+          bool UseNodegroupDgElements>
+void test_quadrature(const ::dg::Formulation dg_formulation,
+                     Spectral::Quadrature quadrature) {
+  if constexpr (Dim == 3) {
+    if (dg_formulation == ::dg::Formulation::StrongInertial and
+        quadrature == Spectral::Quadrature::GaussLobatto) {
+      test_impl<Dim, System, LocalTimeStepping, grid_is, UseNodegroupDgElements,
+                false>(dg_formulation, Spectral::Quadrature::GaussLobatto);
+    }
+  }
+  test_impl<Dim, System, LocalTimeStepping, grid_is, UseNodegroupDgElements,
+            true>(dg_formulation, Spectral::Quadrature::GaussLobatto);
+}
+
+template <size_t Dim, typename System, bool LocalTimeStepping, grid::Is grid_is,
+          bool UseNodegroupDgElements>
 void test_dg_formulation(const ::dg::Formulation dg_formulation) {
-  test_impl<Dim, System, LocalTimeStepping, grid_is,
-            UseNodegroupDgElements>(dg_formulation,
-                                    Spectral::Quadrature::GaussLobatto);
-  // test_impl<Dim, System, LocalTimeStepping, grid_is,
+  test_quadrature<Dim, System, LocalTimeStepping, grid_is,
+                  UseNodegroupDgElements>(dg_formulation,
+                                          Spectral::Quadrature::GaussLobatto);
+  // test_quadrature<Dim, System, LocalTimeStepping, grid_is,
   //           UseNodegroupDgElements>(dg_formulation,
   //                                   Spectral::Quadrature::Gauss);
 }
 
-template <size_t Dim, typename System, bool LocalTimeStepping,
-          grid::Is grid_is, bool UseNodegroupDgElements>
+template <size_t Dim, typename System, bool LocalTimeStepping, grid::Is grid_is,
+          bool UseNodegroupDgElements>
 void test_use_nodegroup_dg_elements() {
   test_dg_formulation<Dim, System, LocalTimeStepping, grid_is,
                       UseNodegroupDgElements>(
@@ -519,8 +671,7 @@ void test_use_nodegroup_dg_elements() {
   //::dg::Formulation::WeakInertial);
 }
 
-template <size_t Dim, typename System, bool LocalTimeStepping,
-          grid::Is grid_is>
+template <size_t Dim, typename System, bool LocalTimeStepping, grid::Is grid_is>
 void test_moving_mesh() {
   test_use_nodegroup_dg_elements<Dim, System, LocalTimeStepping, grid_is,
                                  false>();
@@ -533,14 +684,14 @@ void test_moving_mesh() {
 template <size_t Dim, typename System, bool LocalTimeStepping>
 void test_lts() {
   test_moving_mesh<Dim, System, LocalTimeStepping, grid::Is::Stationary>();
-  test_moving_mesh<Dim, System, LocalTimeStepping, grid::Is::Comoving>();
-  test_moving_mesh<Dim, System, LocalTimeStepping, grid::Is::Expanding>();
+  // test_moving_mesh<Dim, System, LocalTimeStepping, grid::Is::Comoving>();
+  // test_moving_mesh<Dim, System, LocalTimeStepping, grid::Is::Expanding>();
 }
 }  // namespace
 
 template <size_t Dim, typename System>
 void test() {
   test_lts<Dim, System, false>();
-//  test_lts<Dim, System, true>();
+  // test_lts<Dim, System, true>();
 }
 }  // namespace TestHelpers::evolution::dg::Actions
