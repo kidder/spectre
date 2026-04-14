@@ -36,6 +36,7 @@
 #include "Evolution/DiscontinuousGalerkin/BoundaryData.hpp"
 #include "Evolution/DiscontinuousGalerkin/InboxTags.hpp"
 #include "Evolution/DiscontinuousGalerkin/InterfaceDataPolicy.hpp"
+#include "Evolution/DiscontinuousGalerkin/InterpolatedBoundaryData.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarData.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarDataHolder.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarInfo.hpp"
@@ -758,8 +759,8 @@ void ComputeTimeDerivative<Dim, EvolutionSystem, DgStepChoosers,
                 mortar_info.at(mortar_id).interpolator().value();
             const auto& host_data =
                 *all_mortar_data.at(mortar_id).local().mortar_data.value();
-            neighbor_boundary_data_on_mortar =
-                interpolator.interpolate_to_neighbor(host_data);
+            // neighbor_boundary_data_on_mortar =
+            //     interpolator.interpolate_to_neighbor(host_data);
             interpolated_boundary_data = InterpolatedBoundaryData<Dim>{
                 {.data = interpolator.interpolate_to_neighbor(host_data),
                  .target_mesh = interpolator.neighbor_mortar_mesh(),
@@ -890,6 +891,15 @@ void ComputeTimeDerivative<Dim, EvolutionSystem, DgStepChoosers,
             if (not mortar_history_directions.contains(direction)) {
               continue;
             }
+            const size_t total_neighbors = neighbors_in_direction.size();
+            // If there are multiple non-conforming neighbors, we only create a
+            // single mortar labeled by the host ElementId.  This is done
+            // because the data from all neighbors will be combined onto a
+            // single mortar as it makes no sense to have multiple mortars
+            // between non-conforming Elements.
+            const bool has_multiple_non_conforming_neighbors =
+                total_neighbors > 1 and
+                not neighbors_in_direction.are_conforming();
             // We can perform projections once for all neighbors in the
             // direction because we care about the _face_ mesh, not the mortar
             // mesh.
@@ -920,7 +930,10 @@ void ComputeTimeDerivative<Dim, EvolutionSystem, DgStepChoosers,
             }
 
             for (const auto& neighbor : neighbors_in_direction) {
-              const DirectionalId<Dim> mortar_id{direction, neighbor};
+              const DirectionalId<Dim> mortar_id{
+                  direction, has_multiple_non_conforming_neighbors
+                                 ? element.id()
+                                 : neighbor};
               if (mortar_info.at(mortar_id).time_stepping_policy() !=
                   TimeSteppingPolicy::Conservative) {
                 continue;

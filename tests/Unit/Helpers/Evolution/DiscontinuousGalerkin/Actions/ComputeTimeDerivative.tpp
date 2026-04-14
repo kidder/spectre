@@ -25,6 +25,7 @@
 #include "Evolution/DiscontinuousGalerkin/Actions/VolumeTermsImpl.tpp"
 #include "Evolution/DiscontinuousGalerkin/Initialization/Mortars.hpp"
 #include "Evolution/DiscontinuousGalerkin/Initialization/QuadratureTag.hpp"
+#include "Evolution/DiscontinuousGalerkin/InterpolatedBoundaryData.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarData.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarDataHolder.hpp"
 #include "Evolution/DiscontinuousGalerkin/MortarTags.hpp"
@@ -81,9 +82,9 @@ void check_dt_evolved_vars(
       make_not_null(&get<Tags::dt<Var1>>(expected_dt_evolved_vars)), x, t);
   Var2<Dim>::template dt_value<grid_is>(
       make_not_null(&get<Tags::dt<Var2<Dim>>>(expected_dt_evolved_vars)), x, t);
-  const auto approx = Approx::custom().scale(1.0).epsilon(1.e-11);
+  const auto custom_approx = Approx::custom().scale(1.0).epsilon(1.e-11);
   CHECK_VARIABLES_CUSTOM_APPROX(dt_evolved_vars, expected_dt_evolved_vars,
-                                approx);
+                                custom_approx);
 }
 
 template <size_t Dim>
@@ -123,6 +124,7 @@ tnsr::i<DataVector, Dim, Frame::Inertial> unit_normal(
 template <typename System, bool LocalTimeStepping, grid::Is grid_is,
           typename HistoryMap, typename NormalsMap, size_t Dim>
 void check_mortar_data(
+    const DirectionalIdMap<Dim, ::evolution::dg::MortarInfo<Dim>>& mortar_infos,
     const DirectionalIdMap<Dim, ::evolution::dg::MortarDataHolder<Dim>>&
         mortar_data,
     const HistoryMap& mortar_data_history,
@@ -141,12 +143,12 @@ void check_mortar_data(
   if constexpr (not LocalTimeStepping) {
     REQUIRE(mortar_data_history.size() == 0);
   }
-  const double sign =
-      dg_formulation == ::dg::Formulation::StrongInertial ? 1.0 : -1.0;
   for (const auto& [mortar_id, mortar_data_holder] : mortar_data) {
     CAPTURE(mortar_id);
     const auto& mortar_mesh = mortar_meshes.at(mortar_id);
     CAPTURE(mortar_mesh);
+    const auto& mortar_info = mortar_infos.at(mortar_id);
+    CAPTURE(mortar_info);
     const auto& direction = mortar_id.direction();
     const size_t sliced_dim = direction.dimension();
     const auto& local_mortar_data = mortar_data_holder.local();
@@ -159,11 +161,12 @@ void check_mortar_data(
             normal_covector_and_magnitude.at(direction).value());
     auto expected_mortar_data_vars =
         System::boundary_correction::template expected_mortar_data<grid_is>(
-            normal_covector, x, t, sign);
+            normal_covector, x, t, 1.0);
     DataVector expected_mortar_data(expected_mortar_data_vars.data(),
                                     expected_mortar_data_vars.size());
 
-    if constexpr (LocalTimeStepping) {
+    if (mortar_info.time_stepping_policy() !=
+        ::evolution::dg::TimeSteppingPolicy::EqualRate) {
       const Spectral::Quadrature sliced_quadrature =
           volume_mesh.quadrature(sliced_dim);
       REQUIRE(not local_mortar_data.mortar_data.has_value());
@@ -217,12 +220,11 @@ void check_mortar_data(
 template <typename System, bool LocalTimeStepping, grid::Is grid_is,
           typename NormalsMap, size_t Dim, typename Metavariables>
 void check_inboxes(
-    const Element<Dim>& element,
+    const Element<Dim>& element, const Mesh<Dim>& volume_mesh,
     const DirectionalIdMap<Dim, ::evolution::dg::MortarInfo<Dim>>& mortar_infos,
     const DirectionalIdMap<Dim, ::evolution::dg::BoundaryData<Dim>>&
         boundary_data,
     const NormalsMap& normal_covector_and_magnitude,
-    const DirectionalIdMap<Dim, Mesh<Dim - 1>>& mortar_meshes,
     const DirectionalIdMap<Dim, Mesh<Dim>>& neighbor_meshes,
     const ElementMap<Dim, Frame::Grid>& element_map,
     const domain::CoordinateMapBase<Frame::Grid, Frame::Inertial, Dim>&
@@ -235,11 +237,10 @@ void check_inboxes(
     ActionTesting::MockRuntimeSystem<Metavariables>& runner) {
   CAPTURE(element);
   CAPTURE(mortar_infos);
-  const double sign =
-      dg_formulation == ::dg::Formulation::StrongInertial ? 1.0 : -1.0;
+  const double sign = 1.0;
   for (const auto& [mortar_id, received_data] : boundary_data) {
     CAPTURE(mortar_id);
-    //    CAPTURE(received_data);
+    CAPTURE(received_data);
     const auto& direction = mortar_id.direction();
     const auto& neighbors = element.neighbors().at(direction);
 
@@ -251,23 +252,75 @@ void check_inboxes(
     const auto& face_type = element.face_types().at(direction);
     switch (face_type) {
       case domain::FaceType::MultipleNonconforming: {
-        const auto& neighbor_orientation =
-            neighbors.orientation(mortar_id.id());
+        using component = Component<Metavariables>;
+        const ElementId<Dim> neighbor_id = mortar_id.id();
+        const auto& neighbor_box = get_databox<component>(runner, neighbor_id);
+
+        const auto& neighbor_orientation = neighbors.orientation(neighbor_id);
         const auto neighbor_normal_direction =
             neighbor_orientation(direction).opposite();
+        CAPTURE(neighbor_normal_direction);
         REQUIRE(received_data.interpolated_boundary_data.has_value());
+        const auto& interpolated_boundary_data =
+            received_data.interpolated_boundary_data.value();
+        const auto& target_mesh = interpolated_boundary_data.target_mesh();
+        const auto face_mesh = volume_mesh.slice_away(sliced_dim);
+        REQUIRE(target_mesh == face_mesh);
         const auto neighbor_mortar_mesh =
             neighbor_mesh.slice_away(neighbor_orientation(sliced_dim));
         CHECK(received_data.boundary_correction_mesh.value() ==
               neighbor_mortar_mesh);
-        // // both wrong
-        // CHECK(get<0>(x).size() ==
-        //       received_data.boundary_correction_data.value().size() / 9);
-        // CHECK(get<0>(normal_covector).size() ==
-        //       received_data.boundary_correction_data.value().size() / 9);
-        // // REQUIRE(received_data.boundary_correction_data.value().size()
-        // ==
-        // //         expected_received_data.size());
+        {
+          const auto& neighbor_element_map =
+              db::get<domain::Tags::ElementMap<Dim, Frame::Grid>>(neighbor_box);
+          const auto& neighbor_coordinate_map =
+              db::get<domain::CoordinateMaps::Tags::CoordinateMap<
+                  Dim, Frame::Grid, Frame::Inertial>>(neighbor_box);
+          const auto x = inertial_interface_coordinates(
+              neighbor_mortar_mesh, neighbor_normal_direction,
+              neighbor_element_map, neighbor_coordinate_map, t,
+              functions_of_time);
+          const auto neighbor_normal_covector =
+              unit_normal(neighbor_mortar_mesh, neighbor_normal_direction,
+                          neighbor_element_map, neighbor_coordinate_map, t,
+                          functions_of_time);
+          auto expected_received_data_vars =
+              System::boundary_correction::template expected_mortar_data<
+                  grid_is>(neighbor_normal_covector, x, t, sign);
+          DataVector expected_received_data(expected_received_data_vars.data(),
+                                            expected_received_data_vars.size());
+          REQUIRE(received_data.boundary_correction_data.value().size() ==
+                  expected_received_data.size());
+          CHECK_ITERABLE_APPROX(received_data.boundary_correction_data.value(),
+                                expected_received_data);
+        }
+        const auto x = inertial_interface_coordinates(
+            face_mesh, direction, element_map, coordinate_map, t,
+            functions_of_time);
+        const auto& normal_covector =
+            get<::evolution::dg::Tags::NormalCovector<Dim>>(
+                normal_covector_and_magnitude.at(direction).value());
+        auto expected_received_data_vars =
+            System::boundary_correction::template expected_mortar_data<grid_is>(
+                normal_covector, x, t, -sign);
+        DataVector expected_received_data(expected_received_data_vars.data(),
+                                          expected_received_data_vars.size());
+        const auto& offsets = interpolated_boundary_data.offsets();
+        const size_t n_pts_interpolated = offsets.size();
+        const size_t n_pts_face = face_mesh.number_of_grid_points();
+        const size_t n_components =
+            expected_received_data_vars.number_of_independent_components;
+        REQUIRE(n_components == 1 + 2 + 2 * Dim);
+        const auto& interpolated_data =
+            interpolated_boundary_data.boundary_data();
+        const auto custom_approx = Approx::custom().scale(1.0).epsilon(1.e-11);
+        for (size_t c = 0; c < n_components; ++c) {
+          for (size_t s = 0; s < n_pts_interpolated; ++s) {
+            CHECK(
+                custom_approx(interpolated_data[s + c * n_pts_interpolated]) ==
+                expected_received_data[offsets[s] + c * n_pts_face]);
+          }
+        }
         break;
       }
       case domain::FaceType::SingleNonconforming: {
@@ -275,14 +328,10 @@ void check_inboxes(
         const ElementId<Dim> neighbor_id = mortar_id.id();
         const auto& neighbor_box = get_databox<component>(runner, neighbor_id);
 
-        const auto& neighbor_orientation =
-            neighbors.orientation(mortar_id.id());
+        const auto& neighbor_orientation = neighbors.orientation(neighbor_id);
         const auto neighbor_normal_direction =
             neighbor_orientation(direction).opposite();
         CAPTURE(neighbor_normal_direction);
-        const DirectionalId<Dim> neighbor_mortar_id{neighbor_normal_direction,
-                                                    neighbor_id};
-
         REQUIRE(not received_data.interpolated_boundary_data.has_value());
         const auto neighbor_mortar_mesh =
             neighbor_mesh.slice_away(neighbor_orientation(sliced_dim));
@@ -604,13 +653,15 @@ void test_impl(const ::dg::Formulation dg_formulation,
     const auto& next_time_step_id = db::get<Tags::Next<Tags::TimeStepId>>(box);
     const auto& functions_of_time = db::get<domain::Tags::FunctionsOfTime>(box);
     check_mortar_data<System, LocalTimeStepping, grid_is>(
-        mortar_data, mortar_data_history, normal_covector_and_magnitude, mesh,
-        mortar_meshes, element_map, coordinate_map, det_inv_jacobian,
-        time_step_id, t, functions_of_time, dg_formulation);
+        mortar_infos, mortar_data, mortar_data_history,
+        normal_covector_and_magnitude, mesh, mortar_meshes, element_map,
+        coordinate_map, det_inv_jacobian, time_step_id, t, functions_of_time,
+        dg_formulation);
     check_inboxes<System, LocalTimeStepping, grid_is>(
-        element, mortar_infos, boundary_data, normal_covector_and_magnitude,
-        mortar_meshes, neighbor_meshes, element_map, coordinate_map,
-        next_time_step_id, t, functions_of_time, dg_formulation, runner);
+        element, mesh, mortar_infos, boundary_data,
+        normal_covector_and_magnitude, neighbor_meshes, element_map,
+        coordinate_map, next_time_step_id, t, functions_of_time, dg_formulation,
+        runner);
   }
 
   if (dg_formulation == ::dg::Formulation::WeakInertial and
@@ -666,9 +717,8 @@ void test_use_nodegroup_dg_elements() {
   test_dg_formulation<Dim, System, LocalTimeStepping, grid_is,
                       UseNodegroupDgElements>(
       ::dg::Formulation::StrongInertial);
-  // test_dg_formulation<Dim, System, LocalTimeStepping, grid_is,
-  //                     UseNodegroupDgElements>(
-  //::dg::Formulation::WeakInertial);
+  test_dg_formulation<Dim, System, LocalTimeStepping, grid_is,
+                      UseNodegroupDgElements>(::dg::Formulation::WeakInertial);
 }
 
 template <size_t Dim, typename System, bool LocalTimeStepping, grid::Is grid_is>
@@ -692,6 +742,6 @@ void test_lts() {
 template <size_t Dim, typename System>
 void test() {
   test_lts<Dim, System, false>();
-  // test_lts<Dim, System, true>();
+  test_lts<Dim, System, true>();
 }
 }  // namespace TestHelpers::evolution::dg::Actions

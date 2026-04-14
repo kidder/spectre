@@ -33,8 +33,8 @@ void test_dim() {
 
 template <bool PassVariables>
 void test_pass_variables() {
-  // test_dim<PassVariables, 1>();
-  // test_dim<PassVariables, 2>();
+  test_dim<PassVariables, 1>();
+  test_dim<PassVariables, 2>();
   test_dim<PassVariables, 3>();
 }
 }  // namespace
