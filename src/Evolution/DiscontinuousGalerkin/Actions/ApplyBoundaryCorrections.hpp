@@ -234,7 +234,7 @@ bool receive_boundary_data(
         directions_with_multiple_non_conforming_neighbors{};
 
     for (auto& mortar_id_and_data : messages_to_process->second) {
-      const auto& received_mortar_id =  mortar_id_and_data.first;
+      const auto& received_mortar_id = mortar_id_and_data.first;
       auto& received_mortar_data = mortar_id_and_data.second;
       const auto& direction = received_mortar_id.direction();
       const auto& neighbor_mesh = received_mortar_data.volume_mesh;
@@ -294,7 +294,8 @@ bool receive_boundary_data(
               const Element<volume_dim>& element,
               const DirectionalIdMap<volume_dim, MortarInfo<volume_dim>>&
                   mortar_infos) {
-           neighbor_meshes->insert_or_assign(received_mortar_id, neighbor_mesh);
+            neighbor_meshes->insert_or_assign(received_mortar_id,
+                                              neighbor_mesh);
             switch (mortar_infos.at(mortar_id).interface_data_policy()) {
               case InterfaceDataPolicy::CopyProject:
                 [[fallthrough]];
