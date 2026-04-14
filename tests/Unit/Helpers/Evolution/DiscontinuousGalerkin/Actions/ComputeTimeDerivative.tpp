@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "DataStructures/DataBox/DataBox.hpp"
+#include "DataStructures/TaggedTuple.hpp"
 #include "DataStructures/Variables.hpp"
 #include "DataStructures/VariablesTag.hpp"
 #include "Domain/BoundaryConditions/BoundaryCondition.hpp"
@@ -52,7 +53,6 @@
 #include "Utilities/ProtocolHelpers.hpp"
 #include "Utilities/Serialization/RegisterDerivedClassesWithCharm.hpp"
 #include "Utilities/TMPL.hpp"
-#include "Utilities/TaggedTuple.hpp"
 
 #include "Parallel/Printf/Printf.hpp"
 
@@ -222,7 +222,7 @@ template <typename System, bool LocalTimeStepping, grid::Is grid_is,
 void check_inboxes(
     const Element<Dim>& element, const Mesh<Dim>& volume_mesh,
     const DirectionalIdMap<Dim, ::evolution::dg::MortarInfo<Dim>>& mortar_infos,
-    const DirectionalIdMap<Dim, ::evolution::dg::BoundaryData<Dim>>&
+    const typename ::evolution::dg::InboxBoundaryData<Dim>::mapped_type&
         boundary_data,
     const NormalsMap& normal_covector_and_magnitude,
     const DirectionalIdMap<Dim, Mesh<Dim>>& neighbor_meshes,
