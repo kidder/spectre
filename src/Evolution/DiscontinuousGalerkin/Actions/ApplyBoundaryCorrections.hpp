@@ -65,6 +65,8 @@
 #include "Utilities/MakeArray.hpp"
 #include "Utilities/TMPL.hpp"
 
+#include "Utilities/ErrorHandling/CaptureForError.hpp"
+
 /// \cond
 namespace Tags {
 struct Time;
@@ -135,7 +137,8 @@ bool receive_boundary_data(
   const auto& mortar_infos = db::get<Tags::MortarInfo<volume_dim>>(*box);
   const auto& mortar_next_time_step_ids =
       db::get<evolution::dg::Tags::MortarNextTemporalId<volume_dim>>(*box);
-
+  CAPTURE_FOR_ERROR(element);
+  CAPTURE_FOR_ERROR(mortar_next_time_step_ids);
   for (;;) {
     std::optional<TimeStepId> time_to_process{};
     for (const auto& [mortar_id, mortar_next_time_step_id] :
@@ -186,9 +189,25 @@ bool receive_boundary_data(
       return true;
     }
 
-    const auto expected_messages = static_cast<size_t>(alg::count_if(
-        mortar_next_time_step_ids,
-        [&](const auto& entry) { return entry.second == *time_to_process; }));
+    // const auto expected_messages = static_cast<size_t>(alg::count_if(
+    //     mortar_next_time_step_ids,
+    //     [&](const auto& entry) { return entry.second == *time_to_process;
+    //     }));
+
+    const auto expected_messages = static_cast<size_t>(alg::accumulate(
+        mortar_next_time_step_ids, 0,
+        [&mortar_infos, &element, &time_to_process](size_t total,
+                                                    const auto& entry) {
+          if (entry.second != *time_to_process) {
+            return total;
+          } else if (mortar_infos.at(entry.first).interface_data_policy() !=
+                     InterfaceDataPolicy::NonconformingNeighborInterpolates) {
+            return total + 1;
+          } else {
+            return total +
+                   element.neighbors().at(entry.first.direction()).size();
+          }
+        }));
 
     // This is a
     //
@@ -230,12 +249,15 @@ bool receive_boundary_data(
     // chosen.  It is important that the corrected version be what is
     // inserted into the boundary history.
     const TimeStepId processing_time = messages_to_process->first;
+    CAPTURE_FOR_ERROR(processing_time);
     std::unordered_set<Direction<volume_dim>>
         directions_with_multiple_non_conforming_neighbors{};
 
     for (auto& mortar_id_and_data : messages_to_process->second) {
       const auto& received_mortar_id = mortar_id_and_data.first;
+      CAPTURE_FOR_ERROR(received_mortar_id);
       auto& received_mortar_data = mortar_id_and_data.second;
+      CAPTURE_FOR_ERROR(received_mortar_data);
       const auto& direction = received_mortar_id.direction();
       const auto& neighbor_mesh = received_mortar_data.volume_mesh;
       const size_t sliced_away_dim = direction.dimension();
@@ -249,8 +271,11 @@ bool receive_boundary_data(
           mortar_infos.contains(received_mortar_id)
               ? received_mortar_id
               : DirectionalId<volume_dim>{direction, element.id()};
+      CAPTURE_FOR_ERROR(mortar_id);
 
-      ASSERT(mortar_next_time_step_ids.at(mortar_id) == processing_time,
+      ASSERT(mortar_next_time_step_ids.at(mortar_id) == processing_time or
+                 directions_with_multiple_non_conforming_neighbors.contains(
+                     direction),
              "Processing wrong time for mortar "
                  << mortar_id << "\nExpected "
                  << mortar_next_time_step_ids.at(mortar_id)
@@ -290,8 +315,6 @@ bool receive_boundary_data(
               const gsl::not_null<
                   DirectionalIdMap<volume_dim, Mesh<volume_dim>>*>
                   neighbor_meshes,
-              const Mesh<volume_dim>& volume_mesh,
-              const Element<volume_dim>& element,
               const DirectionalIdMap<volume_dim, MortarInfo<volume_dim>>&
                   mortar_infos) {
             neighbor_meshes->insert_or_assign(received_mortar_id,
@@ -464,9 +487,7 @@ bool receive_boundary_data(
                       << " is not handled yet, id = " << mortar_id);
             }
           },
-          box, db::get<domain::Tags::Mesh<volume_dim>>(*box),
-          db::get<domain::Tags::Element<volume_dim>>(*box),
-          db::get<evolution::dg::Tags::MortarInfo<volume_dim>>(*box));
+          box, db::get<evolution::dg::Tags::MortarInfo<volume_dim>>(*box));
     }
     // Can I do this?
     const auto& gts_mortar_data =
@@ -783,9 +804,9 @@ struct ApplyBoundaryCorrections {
                  &local_data_on_mortar, &mortar_id, &mortar_meshes,
                  &mortar_infos, &neighbor_data_on_mortar, using_points_on_face,
                  &volume_args_tuple, &volume_det_jacobian,
-                 &volume_det_inv_jacobian, &volume_dt_correction, &volume_mesh](
-                    const MortarData<volume_dim>& local_mortar_data,
-                    const MortarData<volume_dim>& neighbor_mortar_data)
+                 &volume_det_inv_jacobian, &volume_dt_correction, &volume_mesh,
+                 &element](const MortarData<volume_dim>& local_mortar_data,
+                           const MortarData<volume_dim>& neighbor_mortar_data)
                 -> DtVariables {
               if (local_time_stepping and not using_points_on_face) {
                 // This needs to be updated every call because the Jacobian
@@ -856,8 +877,10 @@ struct ApplyBoundaryCorrections {
               auto& dt_boundary_correction =
                   [&dt_boundary_correction_on_mortar,
                    &dt_boundary_correction_projected_onto_face, &face_mesh,
-                   &mortar_mesh, &mortar_size]() -> DtVariables& {
-                if (Spectral::needs_projection(face_mesh, mortar_mesh,
+                   &mortar_mesh, &mortar_size, &element,
+                   &direction]() -> DtVariables& {
+                if (element.neighbors().at(direction).are_conforming() and
+                    Spectral::needs_projection(face_mesh, mortar_mesh,
                                                mortar_size)) {
                   dt_boundary_correction_projected_onto_face =
                       ::dg::project_from_mortar(

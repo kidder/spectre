@@ -253,7 +253,7 @@ void test(const gsl::not_null<std::mt19937*> generator) {
         domain::creators::time_dependence::UniformTranslation<Dim>>(
         0.0, wave::comoving_v<Dim>());
   }
-  const auto creator = domain_creator(*time_dependence);
+  const auto creator = domain_creator<true>(*time_dependence);
   const auto domain = creator->create_domain();
   const size_t num_blocks = domain.blocks().size();
   const auto& initial_extents = creator->initial_extents();
