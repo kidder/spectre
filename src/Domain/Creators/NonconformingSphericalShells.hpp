@@ -13,6 +13,7 @@
 #include "Domain/BoundaryConditions/BoundaryCondition.hpp"
 #include "Domain/BoundaryConditions/GetBoundaryConditionsBase.hpp"
 #include "Domain/Creators/DomainCreator.hpp"
+#include "Domain/Creators/TimeDependence/TimeDependence.hpp"
 #include "Options/Context.hpp"
 #include "Options/String.hpp"
 #include "Utilities/TMPL.hpp"
@@ -115,6 +116,13 @@ class NonconformingSphericalShells : public DomainCreator<3> {
         "Initial angular refinement levels of inner wedges."};
   };
 
+  struct TimeDependence {
+    using type =
+        std::unique_ptr<domain::creators::time_dependence::TimeDependence<3>>;
+    static constexpr Options::String help = {
+        "The time dependence of the moving mesh domain."};
+  };
+
   template <typename BoundaryConditionsBase>
   struct InnerBoundaryCondition {
     static constexpr Options::String help =
@@ -133,7 +141,7 @@ class NonconformingSphericalShells : public DomainCreator<3> {
       tmpl::list<InnerRadius, InterfaceRadius, OuterRadius,
                  InitialRadialRefinement, InitialAngularRefinementOfWedges,
                  InitialNumberOfRadialGridPoints, InitialSphericalHarmonicL,
-                 InitialNumberOfAngularGridPointsOfWedges>;
+                 InitialNumberOfAngularGridPointsOfWedges, TimeDependence>;
 
   template <typename Metavariables>
   using options = tmpl::conditional_t<
@@ -154,11 +162,12 @@ class NonconformingSphericalShells : public DomainCreator<3> {
 
   NonconformingSphericalShells(
       double inner_radius, double interface_radius, double outer_radius,
-      size_t initial_radial_refinement,
-      size_t initial_angular_refinement,
+      size_t initial_radial_refinement, size_t initial_angular_refinement,
       size_t initial_number_of_radial_grid_points,
       size_t initial_spherical_harmonic_l,
       size_t initial_number_of_angular_grid_points_of_wedges,
+      std::unique_ptr<domain::creators::time_dependence::TimeDependence<3>>
+          time_dependence,
       std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
           inner_boundary_condition = nullptr,
       std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -188,6 +197,13 @@ class NonconformingSphericalShells : public DomainCreator<3> {
   std::vector<std::array<size_t, 3>> initial_extents() const override;
 
   std::vector<std::array<size_t, 3>> initial_refinement_levels() const override;
+
+  auto functions_of_time(const std::unordered_map<std::string, double>&
+                             initial_expiration_times = {}) const
+      -> std::unordered_map<
+          std::string,
+          std::unique_ptr<domain::FunctionsOfTime::FunctionOfTime>> override;
+
  private:
   double inner_radius_{};
   double interface_radius_{};
@@ -199,6 +215,8 @@ class NonconformingSphericalShells : public DomainCreator<3> {
   size_t initial_number_of_angular_grid_points_of_wedges_{};
   std::vector<std::array<size_t, 3>> initial_refinement_levels_{};
   std::vector<std::array<size_t, 3>> initial_number_of_grid_points_{};
+  std::unique_ptr<domain::creators::time_dependence::TimeDependence<3>>
+      time_dependence_{nullptr};
   std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
       inner_boundary_condition_{};
   std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>

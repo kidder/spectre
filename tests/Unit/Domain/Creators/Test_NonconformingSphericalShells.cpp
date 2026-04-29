@@ -73,7 +73,9 @@ std::string option_string(
          "\n"
          "  InitialNumberOfAngularGridPointsOfWedges: " +
          std::to_string(angular_extents) + "\n" + inner_bc_option +
-         outer_bc_option;
+         outer_bc_option +
+         "\n"
+         "  TimeDependence: None\n";
 }
 
 void test_parse_errors() {
@@ -91,7 +93,7 @@ void test_parse_errors() {
       domain::creators::NonconformingSphericalShells(
           inner_radius, 0.5 * inner_radius, outer_radius, radial_refinement,
           angular_refinement, radial_extents, l, angular_extents, nullptr,
-          nullptr, Options::Context{false, {}, 1, 1}),
+          nullptr, nullptr, Options::Context{false, {}, 1, 1}),
       Catch::Matchers::ContainsSubstring(
           "Inner radius must be smaller than interface radius"));
 
@@ -99,14 +101,14 @@ void test_parse_errors() {
       domain::creators::NonconformingSphericalShells(
           inner_radius, 1.5 * outer_radius, outer_radius, radial_refinement,
           angular_refinement, radial_extents, l, angular_extents, nullptr,
-          nullptr, Options::Context{false, {}, 1, 1}),
+          nullptr, nullptr, Options::Context{false, {}, 1, 1}),
       Catch::Matchers::ContainsSubstring(
           "Interface radius must be smaller than outer radius"));
 
   CHECK_THROWS_WITH(
       domain::creators::NonconformingSphericalShells(
           inner_radius, interface_radius, outer_radius, radial_refinement,
-          angular_refinement, radial_extents, l, angular_extents,
+          angular_refinement, radial_extents, l, angular_extents, nullptr,
           create_boundary_condition(false), nullptr,
           Options::Context{false, {}, 1, 1}),
       Catch::Matchers::ContainsSubstring(
@@ -115,7 +117,7 @@ void test_parse_errors() {
   CHECK_THROWS_WITH(
       domain::creators::NonconformingSphericalShells(
           inner_radius, interface_radius, outer_radius, radial_refinement,
-          angular_refinement, radial_extents, l, angular_extents,
+          angular_refinement, radial_extents, l, angular_extents, nullptr,
           create_boundary_condition(false),
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestPeriodicBoundaryCondition<3>>(),
@@ -126,7 +128,7 @@ void test_parse_errors() {
   CHECK_THROWS_WITH(
       domain::creators::NonconformingSphericalShells(
           inner_radius, interface_radius, outer_radius, radial_refinement,
-          angular_refinement, radial_extents, l, angular_extents,
+          angular_refinement, radial_extents, l, angular_extents, nullptr,
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestPeriodicBoundaryCondition<3>>(),
           create_boundary_condition(true), Options::Context{false, {}, 1, 1}),
@@ -136,7 +138,7 @@ void test_parse_errors() {
   CHECK_THROWS_WITH(
       domain::creators::NonconformingSphericalShells(
           inner_radius, interface_radius, outer_radius, radial_refinement,
-          angular_refinement, radial_extents, l, angular_extents,
+          angular_refinement, radial_extents, l, angular_extents, nullptr,
           create_boundary_condition(false),
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestNoneBoundaryCondition<3>>(),
@@ -147,7 +149,7 @@ void test_parse_errors() {
   CHECK_THROWS_WITH(
       domain::creators::NonconformingSphericalShells(
           inner_radius, interface_radius, outer_radius, radial_refinement,
-          angular_refinement, radial_extents, l, angular_extents,
+          angular_refinement, radial_extents, l, angular_extents, nullptr,
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestNoneBoundaryCondition<3>>(),
           create_boundary_condition(true), Options::Context{false, {}, 1, 1}),
@@ -290,6 +292,7 @@ void test(const gsl::not_null<Generator*> gen) {
         radial_extents,
         l,
         angular_extents,
+        nullptr,
         with_boundary_conditions ? create_boundary_condition(false) : nullptr,
         with_boundary_conditions ? create_boundary_condition(true) : nullptr};
     test_nonconforming_spherical_shells_construction(

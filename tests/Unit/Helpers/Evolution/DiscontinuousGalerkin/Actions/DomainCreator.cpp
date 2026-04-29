@@ -50,7 +50,7 @@ std::unique_ptr<DomainCreator<Dim>> domain_creator(
   } else {
     if constexpr (Dim == 3) {
       return std::make_unique<domain::creators::NonconformingSphericalShells>(
-          1.9, 2.4, 2.9, 0, 0, 8, 7, 20,
+          1.9, 2.4, 2.9, 0, 0, 8, 7, 20, time_dependence.get_clone(),
           std::make_unique<BoundaryCondition<3>>(),
           std::make_unique<BoundaryCondition<3>>());
     } else {
