@@ -15,6 +15,9 @@
 #include "Domain/BlockLogicalCoordinates.hpp"
 #include "Domain/BoundaryConditions/BoundaryCondition.hpp"
 #include "Domain/Creators/NonconformingSphericalShells.hpp"
+#include "Domain/Creators/TimeDependence/CubicScale.hpp"
+#include "Domain/Creators/TimeDependence/None.hpp"
+#include "Domain/Creators/TimeDependence/TimeDependence.hpp"
 #include "Domain/Domain.hpp"
 #include "Domain/ElementMap.hpp"
 #include "Domain/Structure/Direction.hpp"
@@ -33,12 +36,34 @@ create_boundary_condition(const bool outer) {
       outer ? Direction<3>::upper_xi() : Direction<3>::lower_zeta(), 50);
 }
 
+std::unique_ptr<domain::creators::time_dependence::TimeDependence<3>>
+create_time_dependence(const bool moving_mesh) {
+  if (moving_mesh) {
+    // linear scaling with a = 1.0 + 0.5 * t
+    return std::make_unique<domain::creators::time_dependence::CubicScale<3>>(
+        0.0, 1000.0, true, std::array{1.0, 1.0}, std::array{0.5, 0.5},
+        std::array{0.0, 0.0});
+  } else {
+    return std::make_unique<domain::creators::time_dependence::None<3>>();
+  }
+}
+
 std::string option_string(
     const double inner_radius, const double interface_radius,
     const double outer_radius, const size_t radial_refinement,
     const size_t angular_refinement, const size_t radial_extents,
     const size_t spherical_harmonic_l, const size_t angular_extents,
-    const bool with_boundary_conditions) {
+    const bool moving_mesh, const bool with_boundary_conditions) {
+  const std::string time_dependence_option =
+      moving_mesh ? "  TimeDependence:\n"
+                    "    CubicScale:\n"
+                    "      InitialTime: 0.0\n"
+                    "      OuterBoundary: 1000.0\n"
+                    "      UseLinearScaling: true\n"
+                    "      InitialExpansion: [1.0, 1.0]\n"
+                    "      Velocity: [0.5, 0.5]\n"
+                    "      Acceleration: [0.0, 0.0]\n"
+                  : "  TimeDependence: None\n";
   const std::string inner_bc_option = with_boundary_conditions
                                           ? "  InnerBoundaryCondition:\n"
                                             "    TestBoundaryCondition:\n"
@@ -72,8 +97,8 @@ std::string option_string(
          std::to_string(spherical_harmonic_l) +
          "\n"
          "  InitialNumberOfAngularGridPointsOfWedges: " +
-         std::to_string(angular_extents) + "\n" + inner_bc_option +
-         outer_bc_option;
+         std::to_string(angular_extents) + "\n" + time_dependence_option +
+         inner_bc_option + outer_bc_option;
 }
 
 void test_parse_errors() {
@@ -91,7 +116,7 @@ void test_parse_errors() {
       domain::creators::NonconformingSphericalShells(
           inner_radius, 0.5 * inner_radius, outer_radius, radial_refinement,
           angular_refinement, radial_extents, l, angular_extents, nullptr,
-          nullptr, Options::Context{false, {}, 1, 1}),
+          nullptr, nullptr, Options::Context{false, {}, 1, 1}),
       Catch::Matchers::ContainsSubstring(
           "Inner radius must be smaller than interface radius"));
 
@@ -99,14 +124,14 @@ void test_parse_errors() {
       domain::creators::NonconformingSphericalShells(
           inner_radius, 1.5 * outer_radius, outer_radius, radial_refinement,
           angular_refinement, radial_extents, l, angular_extents, nullptr,
-          nullptr, Options::Context{false, {}, 1, 1}),
+          nullptr, nullptr, Options::Context{false, {}, 1, 1}),
       Catch::Matchers::ContainsSubstring(
           "Interface radius must be smaller than outer radius"));
 
   CHECK_THROWS_WITH(
       domain::creators::NonconformingSphericalShells(
           inner_radius, interface_radius, outer_radius, radial_refinement,
-          angular_refinement, radial_extents, l, angular_extents,
+          angular_refinement, radial_extents, l, angular_extents, nullptr,
           create_boundary_condition(false), nullptr,
           Options::Context{false, {}, 1, 1}),
       Catch::Matchers::ContainsSubstring(
@@ -115,7 +140,7 @@ void test_parse_errors() {
   CHECK_THROWS_WITH(
       domain::creators::NonconformingSphericalShells(
           inner_radius, interface_radius, outer_radius, radial_refinement,
-          angular_refinement, radial_extents, l, angular_extents,
+          angular_refinement, radial_extents, l, angular_extents, nullptr,
           create_boundary_condition(false),
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestPeriodicBoundaryCondition<3>>(),
@@ -126,7 +151,7 @@ void test_parse_errors() {
   CHECK_THROWS_WITH(
       domain::creators::NonconformingSphericalShells(
           inner_radius, interface_radius, outer_radius, radial_refinement,
-          angular_refinement, radial_extents, l, angular_extents,
+          angular_refinement, radial_extents, l, angular_extents, nullptr,
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestPeriodicBoundaryCondition<3>>(),
           create_boundary_condition(true), Options::Context{false, {}, 1, 1}),
@@ -136,7 +161,7 @@ void test_parse_errors() {
   CHECK_THROWS_WITH(
       domain::creators::NonconformingSphericalShells(
           inner_radius, interface_radius, outer_radius, radial_refinement,
-          angular_refinement, radial_extents, l, angular_extents,
+          angular_refinement, radial_extents, l, angular_extents, nullptr,
           create_boundary_condition(false),
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestNoneBoundaryCondition<3>>(),
@@ -147,7 +172,7 @@ void test_parse_errors() {
   CHECK_THROWS_WITH(
       domain::creators::NonconformingSphericalShells(
           inner_radius, interface_radius, outer_radius, radial_refinement,
-          angular_refinement, radial_extents, l, angular_extents,
+          angular_refinement, radial_extents, l, angular_extents, nullptr,
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestNoneBoundaryCondition<3>>(),
           create_boundary_condition(true), Options::Context{false, {}, 1, 1}),
@@ -161,10 +186,11 @@ void test_nonconforming_spherical_shells_construction(
     const gsl::not_null<Generator*> gen,
     const domain::creators::NonconformingSphericalShells& creator,
     const double inner_radius, const double interface_radius,
-    const double outer_radius, const bool expect_boundary_conditions = true) {
+    const double outer_radius, const bool moving_mesh,
+    const bool expect_boundary_conditions = true) {
   // check consistency of domain
   const auto domain = TestHelpers::domain::creators::test_domain_creator(
-      creator, expect_boundary_conditions);
+      creator, expect_boundary_conditions, false, std::vector{2.0});
   const auto& grid_anchors = creator.grid_anchors();
   CHECK(grid_anchors.size() == 1);
   CHECK(grid_anchors.count("Center") == 1);
@@ -177,6 +203,7 @@ void test_nonconforming_spherical_shells_construction(
   CAPTURE(num_blocks);
   const auto all_boundary_conditions = creator.external_boundary_conditions();
   const auto functions_of_time = creator.functions_of_time();
+  const double time = 2.0;
 
   // Check total number of external boundaries
   const size_t num_external_boundaries =
@@ -198,15 +225,19 @@ void test_nonconforming_spherical_shells_construction(
       INFO("Radius of random point on lower face of cubed shells");
       const tnsr::I<double, 3, Frame::ElementLogical> x_logical{
           {{xi_distribution(*gen), xi_distribution(*gen), -1.0}}};
-      auto x_inertial = inertial_element_map(x_logical);
-      CHECK(get(magnitude(x_inertial)) == approx(inner_radius));
+      auto x_inertial =
+          inertial_element_map(x_logical, time, functions_of_time);
+      CHECK(get(magnitude(x_inertial)) ==
+            approx(moving_mesh ? 2.0 * inner_radius : inner_radius));
     }
     {
       INFO("Radius of random point on upper face of cubed shells");
       const tnsr::I<double, 3, Frame::ElementLogical> x_logical{
           {{xi_distribution(*gen), xi_distribution(*gen), 1.0}}};
-      auto x_inertial = inertial_element_map(x_logical);
-      CHECK(get(magnitude(x_inertial)) == approx(interface_radius));
+      auto x_inertial =
+          inertial_element_map(x_logical, time, functions_of_time);
+      CHECK(get(magnitude(x_inertial)) ==
+            approx(moving_mesh ? 2.0 * interface_radius : interface_radius));
     }
     {
       INFO("External boundaries of cubed shells");
@@ -239,15 +270,17 @@ void test_nonconforming_spherical_shells_construction(
     INFO("Radius of random point on lower face of spherical shell");
     const tnsr::I<double, 3, Frame::ElementLogical> x_logical{
         {{-1.0, theta_distribution(*gen), phi_distribution(*gen)}}};
-    auto x_inertial = inertial_element_map(x_logical);
-    CHECK(get(magnitude(x_inertial)) == approx(interface_radius));
+    auto x_inertial = inertial_element_map(x_logical, time, functions_of_time);
+    CHECK(get(magnitude(x_inertial)) ==
+          approx(moving_mesh ? 2.0 * interface_radius : interface_radius));
   }
   {
     INFO("Radius of random point on upper face of spherical shell");
     const tnsr::I<double, 3, Frame::ElementLogical> x_logical{
         {{1.0, theta_distribution(*gen), phi_distribution(*gen)}}};
-    auto x_inertial = inertial_element_map(x_logical);
-    CHECK(get(magnitude(x_inertial)) == approx(outer_radius));
+    auto x_inertial = inertial_element_map(x_logical, time, functions_of_time);
+    CHECK(get(magnitude(x_inertial)) ==
+          approx(moving_mesh ? 2.0 * outer_radius : outer_radius));
   }
   {
     INFO("External boundaries of spherical shell");
@@ -280,26 +313,30 @@ void test(const gsl::not_null<Generator*> gen) {
   const size_t l = 6;
   const size_t angular_extents = 7;
   for (const bool with_boundary_conditions : {true, false}) {
-    CAPTURE(with_boundary_conditions);
-    const domain::creators::NonconformingSphericalShells creator{
-        inner_radius,
-        interface_radius,
-        outer_radius,
-        radial_refinement,
-        angular_refinement,
-        radial_extents,
-        l,
-        angular_extents,
-        with_boundary_conditions ? create_boundary_condition(false) : nullptr,
-        with_boundary_conditions ? create_boundary_condition(true) : nullptr};
-    test_nonconforming_spherical_shells_construction(
-        gen, creator, inner_radius, interface_radius, outer_radius,
-        with_boundary_conditions);
-    TestHelpers::domain::creators::test_creation(
-        option_string(inner_radius, interface_radius, outer_radius,
-                      radial_refinement, angular_refinement, radial_extents, l,
-                      angular_extents, with_boundary_conditions),
-        creator, with_boundary_conditions);
+    for (const bool moving_mesh : {true, false}) {
+      CAPTURE(with_boundary_conditions);
+      const domain::creators::NonconformingSphericalShells creator{
+          inner_radius,
+          interface_radius,
+          outer_radius,
+          radial_refinement,
+          angular_refinement,
+          radial_extents,
+          l,
+          angular_extents,
+          create_time_dependence(moving_mesh),
+          with_boundary_conditions ? create_boundary_condition(false) : nullptr,
+          with_boundary_conditions ? create_boundary_condition(true) : nullptr};
+      test_nonconforming_spherical_shells_construction(
+          gen, creator, inner_radius, interface_radius, outer_radius,
+          moving_mesh, with_boundary_conditions);
+      TestHelpers::domain::creators::test_creation(
+          option_string(inner_radius, interface_radius, outer_radius,
+                        radial_refinement, angular_refinement, radial_extents,
+                        l, angular_extents, moving_mesh,
+                        with_boundary_conditions),
+          creator, with_boundary_conditions);
+    }
   }
 }
 }  // namespace

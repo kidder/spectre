@@ -27,6 +27,8 @@
 #include "Domain/CoordinateMaps/SphericalToCartesianPfaffian.hpp"
 #include "Domain/CoordinateMaps/Wedge.hpp"
 #include "Domain/Creators/DomainCreator.hpp"
+#include "Domain/Creators/TimeDependence/None.hpp"
+#include "Domain/Creators/TimeDependence/TimeDependence.hpp"
 #include "Domain/Domain.hpp"
 #include "Domain/DomainHelpers.hpp"
 #include "Domain/Structure/BlockNeighbors.hpp"
@@ -47,6 +49,8 @@ NonconformingSphericalShells::NonconformingSphericalShells(
     const size_t initial_number_of_radial_grid_points,
     const size_t initial_spherical_harmonic_l,
     const size_t initial_number_of_angular_grid_points_of_wedges,
+    std::unique_ptr<domain::creators::time_dependence::TimeDependence<3>>
+        time_dependence,
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
         inner_boundary_condition,
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -71,6 +75,7 @@ NonconformingSphericalShells::NonconformingSphericalShells(
           {{initial_number_of_angular_grid_points_of_wedges_,
             initial_number_of_angular_grid_points_of_wedges_,
             initial_number_of_radial_grid_points_}}},
+      time_dependence_(std::move(time_dependence)),
       inner_boundary_condition_(std::move(inner_boundary_condition)),
       outer_boundary_condition_(std::move(outer_boundary_condition)),
       grid_anchors_{{{"Center", tnsr::I<double, 3, Frame::Grid>{
@@ -91,6 +96,11 @@ NonconformingSphericalShells::NonconformingSphericalShells(
         "radius is " +
             std::to_string(interface_radius_) + " and outer radius is " +
             std::to_string(outer_radius_) + ".");
+  }
+
+  if (time_dependence_ == nullptr) {
+    time_dependence_ =
+        std::make_unique<domain::creators::time_dependence::None<3>>();
   }
 
   // Validate boundary conditions
@@ -171,7 +181,23 @@ Domain<3> NonconformingSphericalShells::create_domain() const {
   blocks.emplace_back(std::move(sphere_map), 6_st,
                       std::move(neighbors_of_shell), "Shell",
                       domain::topologies::spherical_shell);
-  return Domain(std::move(blocks));
+  Domain<3> domain{std::move(blocks)};
+  if (not time_dependence_->is_none()) {
+    const size_t number_of_blocks = domain.blocks().size();
+    auto block_maps_grid_to_inertial =
+        time_dependence_->block_maps_grid_to_inertial(number_of_blocks);
+    auto block_maps_grid_to_distorted =
+        time_dependence_->block_maps_grid_to_distorted(number_of_blocks);
+    auto block_maps_distorted_to_inertial =
+        time_dependence_->block_maps_distorted_to_inertial(number_of_blocks);
+    for (size_t block_id = 0; block_id < number_of_blocks; ++block_id) {
+      domain.inject_time_dependent_map_for_block(
+          block_id, std::move(block_maps_grid_to_inertial[block_id]),
+          std::move(block_maps_grid_to_distorted[block_id]),
+          std::move(block_maps_distorted_to_inertial[block_id]));
+    }
+  }
+  return domain;
 }
 
 std::unordered_map<std::string, tnsr::I<double, 3, Frame::Grid>>
@@ -215,5 +241,13 @@ NonconformingSphericalShells::initial_extents() const {
 std::vector<std::array<size_t, 3>>
 NonconformingSphericalShells::initial_refinement_levels() const {
   return initial_refinement_levels_;
+}
+
+std::unordered_map<std::string,
+                   std::unique_ptr<domain::FunctionsOfTime::FunctionOfTime>>
+NonconformingSphericalShells::functions_of_time(
+    const std::unordered_map<std::string, double>& initial_expiration_times)
+    const {
+  return time_dependence_->functions_of_time(initial_expiration_times);
 }
 }  // namespace domain::creators
