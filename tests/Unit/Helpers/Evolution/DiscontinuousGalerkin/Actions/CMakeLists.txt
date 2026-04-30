@@ -6,6 +6,8 @@ set(LIBRARY "EvolutionDgActionsHelpers")
 # We split the instantiations across multiple files to allow better
 # parallelization of the build.
 set(LIBRARY_SOURCES
+  ConservativeSystem.cpp
+  DomainCreator.cpp
   InstantiateCons1d.cpp
   InstantiateCons2d.cpp
   InstantiateCons3d.cpp
@@ -22,6 +24,7 @@ set(LIBRARY_SOURCES
   InstantiateNoncons2d.cpp
   InstantiateNoncons3d.cpp
   SystemType.cpp
+  Variables.cpp
   )
 
 add_spectre_library(${LIBRARY} ${SPECTRE_TEST_LIBS_TYPE} ${LIBRARY_SOURCES})
