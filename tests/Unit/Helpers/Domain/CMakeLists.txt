@@ -4,8 +4,11 @@
 set(LIBRARY "DomainHelpers")
 
 set(LIBRARY_SOURCES
-  DomainTestHelpers.cpp
   Creators/TimeDependent/TestHelpers.cpp
+  DomainTestHelpers.cpp
+  InterfaceInertialCoordinates.cpp
+  NormalCovectorAndMagnitude.cpp
+  UnitNormal.cpp
   )
 
 add_spectre_library(${LIBRARY} ${SPECTRE_TEST_LIBS_TYPE} ${LIBRARY_SOURCES})
