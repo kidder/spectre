@@ -88,10 +88,10 @@ struct ContributeMemoryData {
 
           constexpr bool is_group = Parallel::is_group_v<ContributingComponent>;
 
-          const size_t num_nodes = Parallel::number_of_nodes<size_t>(
-              *Parallel::local(mem_monitor_proxy));
-          const size_t num_procs = Parallel::number_of_procs<size_t>(
-              *Parallel::local(mem_monitor_proxy));
+          const auto num_nodes = static_cast<size_t>(
+              Parallel::number_of_nodes(*Parallel::local(mem_monitor_proxy)));
+          const auto num_procs = static_cast<size_t>(
+              Parallel::number_of_procs(*Parallel::local(mem_monitor_proxy)));
           const size_t expected_number = is_group ? num_procs : num_nodes;
           ASSERT(memory_holder.at(time).size() <= expected_number,
                  "ContributeMemoryData received more data than it was "
@@ -115,9 +115,9 @@ struct ContributeMemoryData {
               if (not is_group) {
                 size_on_node = memory_holder.at(time).at(node);
               } else {
-                const int first_proc = Parallel::first_proc_on_node<int>(
+                const int first_proc = Parallel::first_proc_on_node(
                     node, *Parallel::local(mem_monitor_proxy));
-                const int procs_on_node = Parallel::procs_on_node<int>(
+                const int procs_on_node = Parallel::procs_on_node(
                     node, *Parallel::local(mem_monitor_proxy));
                 const int last_proc = first_proc + procs_on_node;
                 for (int proc = first_proc; proc < last_proc; proc++) {
