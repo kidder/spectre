@@ -9,6 +9,7 @@
 #include <exception>
 #include <initializer_list>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <ostream>
@@ -44,6 +45,7 @@
 #include "Parallel/Printf/Printf.hpp"
 #include "Parallel/Tags/ArrayIndex.hpp"
 #include "Parallel/Tags/DistributedObjectTags.hpp"
+#include "Parallel/Tags/Info.hpp"
 #include "Parallel/TypeTraits.hpp"
 #include "ParallelAlgorithms/Initialization/MutateAssign.hpp"
 #include "Utilities/Algorithm.hpp"
@@ -532,7 +534,7 @@ DistributedObject<ParallelComponent, tmpl::list<PhaseDepActionListsPack...>>::
     ::Initialization::mutate_assign<
         tmpl::push_back<distributed_object_tags, InitializationTags...>>(
         make_not_null(&box_), metavariables{}, array_index_,
-        global_cache_proxy_,
+        global_cache_proxy_, std::make_unique<Info>(),
         std::move(get<InitializationTags>(initialization_items))...);
   } catch (const std::exception& exception) {
     initiate_shutdown(exception);
@@ -563,7 +565,7 @@ DistributedObject<ParallelComponent, tmpl::list<PhaseDepActionListsPack...>>::
     phase_bookmarks_ = std::move(phase_bookmarks);
     ::Initialization::mutate_assign<distributed_object_tags>(
         make_not_null(&box_), metavariables{}, array_index_,
-        global_cache_proxy_);
+        global_cache_proxy_, std::make_unique<Info>());
     callback->invoke();
   } catch (const std::exception& exception) {
     initiate_shutdown(exception);
