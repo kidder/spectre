@@ -38,6 +38,7 @@
 #include "ParallelAlgorithms/Amr/Criteria/Type.hpp"
 #include "ParallelAlgorithms/Amr/Projectors/DefaultInitialize.hpp"
 #include "ParallelAlgorithms/Amr/Protocols/AmrMetavariables.hpp"
+#include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "ParallelAlgorithms/EventsAndTriggers/LogicalTriggers.hpp"
 #include "Utilities/ProtocolHelpers.hpp"
 #include "Utilities/TMPL.hpp"
@@ -126,6 +127,7 @@ struct RandomAmrMetavars {
   struct amr : tt::ConformsTo<::amr::protocols::AmrMetavariables> {
     using element_array = dg_element_array;
     using projectors = tmpl::list<::amr::projectors::DefaultInitialize<
+        ::amr::Tags::ReceivedNeighborPings<Dim>,
         domain::Tags::InitialExtents<Dim>,
         domain::Tags::InitialRefinementLevels<Dim>,
         evolution::dg::Tags::Quadrature>>;

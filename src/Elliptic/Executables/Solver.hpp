@@ -393,6 +393,7 @@ struct Solver {
       typename build_matrix::amr_projectors,
       ::amr::projectors::DefaultInitialize<tmpl::append<
           tmpl::list<
+              ::amr::Tags::ReceivedNeighborPings<volume_dim>,
               domain::Tags::InitialExtents<volume_dim>,
               domain::Tags::InitialRefinementLevels<volume_dim>,
               db::add_tag_prefix<::Tags::deriv, fields_tag,

@@ -6,14 +6,17 @@
 #include <array>
 #include <cstddef>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "DataStructures/DataBox/DataBox.hpp"
 #include "Domain/Amr/Flag.hpp"
 #include "Domain/Amr/Tags/Flags.hpp"
 #include "Domain/Amr/Tags/NeighborFlags.hpp"
+#include "Domain/Structure/DirectionMap.hpp"
 #include "Domain/Structure/ElementId.hpp"
 #include "ParallelAlgorithms/Amr/Actions/Initialize.hpp"
 #include "ParallelAlgorithms/Amr/Protocols/AmrMetavariables.hpp"
+#include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "Utilities/Gsl.hpp"
 #include "Utilities/MakeArray.hpp"
 #include "Utilities/ProtocolHelpers.hpp"
@@ -31,14 +34,17 @@ struct Metavariables {
 template <size_t Dim>
 void test() {
   auto box = db::create<
-      db::AddSimpleTags<amr::Tags::Info<Dim>, amr::Tags::NeighborInfo<Dim>>>(
-      amr::Info<Dim>{}, std::unordered_map<ElementId<Dim>, amr::Info<Dim>>{});
+      db::AddSimpleTags<amr::Tags::Info<Dim>, amr::Tags::NeighborInfo<Dim>,
+                        amr::Tags::ReceivedNeighborPings<Dim>>>(
+      amr::Info<Dim>{}, std::unordered_map<ElementId<Dim>, amr::Info<Dim>>{},
+      DirectionMap<Dim, std::unordered_set<ElementId<Dim>>>{});
   db::mutate_apply<amr::Initialization::Initialize<Dim, Metavariables>>(
       make_not_null(&box));
   CHECK(db::get<amr::Tags::Info<Dim>>(box).flags ==
         make_array<Dim>(amr::Flag::Undefined));
   CHECK(db::get<amr::Tags::Info<Dim>>(box).new_mesh == Mesh<Dim>{});
   CHECK(db::get<amr::Tags::NeighborInfo<Dim>>(box).empty());
+  CHECK(db::get<amr::Tags::ReceivedNeighborPings<Dim>>(box).empty());
 }
 }  // namespace
 

@@ -59,6 +59,7 @@
 #include "ParallelAlgorithms/Amr/Policies/Policies.hpp"
 #include "ParallelAlgorithms/Amr/Policies/Tags.hpp"
 #include "ParallelAlgorithms/Amr/Protocols/AmrMetavariables.hpp"
+#include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/Poisson/Lorentzian.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/Poisson/ProductOfSinusoids.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/Tags.hpp"
@@ -199,7 +200,8 @@ struct Metavariables {
     using projectors = tmpl::flatten<tmpl::list<
         ProjectMetavars<Metavariables>,
         ::amr::projectors::DefaultInitialize<
-            tmpl::list<domain::Tags::InitialExtents<volume_dim>,
+            tmpl::list<::amr::Tags::ReceivedNeighborPings<volume_dim>,
+                       domain::Tags::InitialExtents<volume_dim>,
                        domain::Tags::InitialRefinementLevels<volume_dim>,
                        typename element_array::vars_tag>>,
         elliptic::dg::ProjectGeometry<volume_dim>,

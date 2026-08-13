@@ -76,6 +76,7 @@
 #include "ParallelAlgorithms/Amr/Policies/Tags.hpp"
 #include "ParallelAlgorithms/Amr/Projectors/CopyFromCreatorOrLeaveAsIs.hpp"
 #include "ParallelAlgorithms/Amr/Protocols/AmrMetavariables.hpp"
+#include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "ParallelAlgorithms/LinearSolver/Schwarz/Actions/CommunicateOverlapFields.hpp"
 #include "ParallelAlgorithms/LinearSolver/Schwarz/ElementCenteredSubdomainData.hpp"
 #include "ParallelAlgorithms/LinearSolver/Schwarz/OverlapHelpers.hpp"
@@ -523,7 +524,8 @@ struct Metavariables {
                                        ExtraInitActions>;
     using projectors = tmpl::flatten<tmpl::list<
         ::amr::projectors::DefaultInitialize<tmpl::append<
-            tmpl::list<domain::Tags::InitialExtents<volume_dim>,
+            tmpl::list<::amr::Tags::ReceivedNeighborPings<volume_dim>,
+                       domain::Tags::InitialExtents<volume_dim>,
                        domain::Tags::InitialRefinementLevels<volume_dim>,
                        SubdomainOperatorTag<SubdomainOperator>,
                        typename element_array::

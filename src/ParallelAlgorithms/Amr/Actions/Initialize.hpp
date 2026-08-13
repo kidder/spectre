@@ -37,7 +37,9 @@ struct Initialize {
   using argument_tags = tmpl::list<>;
   using return_tags = tmpl::list<amr::Tags::Info<Dim>>;
   using simple_tags = tmpl::append<
-      return_tags, tmpl::list<amr::Tags::NeighborInfo<Dim>>,
+      return_tags,
+      tmpl::list<amr::Tags::NeighborInfo<Dim>,
+                 amr::Tags::ReceivedNeighborPings<Dim>>,
       tmpl::conditional_t<
           Metavariables::amr::keep_coarse_grids,
           tmpl::list<

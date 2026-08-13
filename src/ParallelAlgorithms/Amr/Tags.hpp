@@ -21,6 +21,11 @@
 #include "Utilities/Gsl.hpp"
 #include "Utilities/TMPL.hpp"
 
+/// \cond
+template <size_t Dim, typename T>
+class DirectionMap;
+/// \endcond
+
 /// Options for AMR
 namespace amr::OptionTags {
 
@@ -170,4 +175,13 @@ struct IsFinestGridObservationKeyCompute
   }
 };
 
+/// \brief The elements that ping this Element when pinging neighboring elements
+/// during Phase::AdjustDomain
+///
+/// \details This list is compared to Element.neighbors() during
+/// Phase::CheckDomain
+template <size_t Dim>
+struct ReceivedNeighborPings : db::SimpleTag {
+  using type = DirectionMap<Dim, std::unordered_set<ElementId<Dim>>>;
+};
 }  // namespace amr::Tags

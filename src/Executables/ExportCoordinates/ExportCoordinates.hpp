@@ -70,6 +70,7 @@
 #include "ParallelAlgorithms/Amr/Projectors/CopyFromCreatorOrLeaveAsIs.hpp"
 #include "ParallelAlgorithms/Amr/Projectors/DefaultInitialize.hpp"
 #include "ParallelAlgorithms/Amr/Protocols/AmrMetavariables.hpp"
+#include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "ParallelAlgorithms/Events/Completion.hpp"
 #include "ParallelAlgorithms/Events/MonitorMemory.hpp"
 #include "ParallelAlgorithms/EventsAndTriggers/Event.hpp"
@@ -381,6 +382,7 @@ struct Metavariables {
         tmpl::list<Initialization::ProjectTimeStepping<volume_dim>,
                    evolution::dg::Initialization::ProjectDomain<volume_dim>,
                    ::amr::projectors::DefaultInitialize<
+                       ::amr::Tags::ReceivedNeighborPings<volume_dim>,
                        Initialization::Tags::InitialTimeDelta,
                        Initialization::Tags::InitialSlabSize,
                        ::domain::Tags::InitialExtents<Dim>,

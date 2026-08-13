@@ -128,6 +128,7 @@
 #include "ParallelAlgorithms/Amr/Projectors/Tensors.hpp"
 #include "ParallelAlgorithms/Amr/Projectors/Variables.hpp"
 #include "ParallelAlgorithms/Amr/Protocols/AmrMetavariables.hpp"
+#include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "ParallelAlgorithms/ApparentHorizonFinder/Callbacks/FailedHorizonFind.hpp"
 #include "ParallelAlgorithms/ApparentHorizonFinder/Callbacks/ObserveCenters.hpp"
 #include "ParallelAlgorithms/ApparentHorizonFinder/Callbacks/ObserveFieldsOnHorizon.hpp"
@@ -730,6 +731,7 @@ struct EvolutionMetavars {
         evolution::dg::Initialization::ProjectSpectralFilters<
             volume_dim, typename system::variables_tag::tags_list>,
         ::amr::projectors::DefaultInitialize<
+            ::amr::Tags::ReceivedNeighborPings<volume_dim>,
             Initialization::Tags::InitialTimeDelta,
             Initialization::Tags::InitialSlabSize,
             ::domain::Tags::InitialExtents<volume_dim>,

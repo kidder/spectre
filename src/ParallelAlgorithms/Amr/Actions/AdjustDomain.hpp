@@ -33,6 +33,7 @@
 #include "Parallel/Tags/Section.hpp"
 #include "ParallelAlgorithms/Amr/Actions/CreateChild.hpp"
 #include "ParallelAlgorithms/Amr/Actions/CreateParent.hpp"
+#include "ParallelAlgorithms/Amr/Actions/PingNeighbors.hpp"
 #include "ParallelAlgorithms/Amr/Projectors/Mesh.hpp"
 #include "ParallelAlgorithms/Amr/Protocols/Projector.hpp"
 #include "ParallelAlgorithms/Amr/Tags.hpp"
@@ -284,6 +285,27 @@ struct AdjustDomain {
             }
           },
           make_not_null(&box));
+
+      // Ping neighbors
+      auto& amr_element_array =
+          Parallel::get_parallel_component<ParallelComponent>(cache);
+      const auto& my_element =
+          db::get<::domain::Tags::Element<volume_dim>>(box);
+      for (const auto& [direction, neighbors] : my_element.neighbors()) {
+        for (const auto& neighbor_id : neighbors.ids()) {
+          const auto& orientation = neighbors.orientation(neighbor_id);
+          const auto direction_from_neighbor =
+              orientation(direction.opposite());
+          if constexpr (Parallel::is_dg_element_collection_v<
+                            ParallelComponent>) {
+            ERROR("AMR is unsupported for dg element collection");
+          } else {
+            Parallel::simple_action<PingNeighbors>(
+                amr_element_array[neighbor_id], my_element.id(),
+                direction_from_neighbor);
+          }
+        }
+      }
     }
   }
 };

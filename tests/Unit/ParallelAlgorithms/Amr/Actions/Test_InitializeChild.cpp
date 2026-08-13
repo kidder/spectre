@@ -34,6 +34,7 @@
 #include "Parallel/Protocols/RegistrationMetavariables.hpp"
 #include "ParallelAlgorithms/Amr/Actions/InitializeChild.hpp"
 #include "ParallelAlgorithms/Amr/Protocols/AmrMetavariables.hpp"
+#include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "Utilities/Gsl.hpp"
 #include "Utilities/ProtocolHelpers.hpp"
 #include "Utilities/TMPL.hpp"
@@ -50,7 +51,8 @@ struct Component {
   using simple_tags = tmpl::list<
       domain::Tags::Element<volume_dim>, domain::Tags::Mesh<volume_dim>,
       domain::Tags::NeighborMesh<volume_dim>, amr::Tags::Info<volume_dim>,
-      amr::Tags::NeighborInfo<volume_dim>>;
+      amr::Tags::NeighborInfo<volume_dim>,
+      amr::Tags::ReceivedNeighborPings<volume_dim>>;
   using phase_dependent_action_list = tmpl::list<Parallel::PhaseActions<
       Parallel::Phase::Initialization,
       tmpl::list<ActionTesting::InitializeDataBox<simple_tags>>>>;
@@ -155,6 +157,14 @@ void test() {
   ActionTesting::MockRuntimeSystem<Metavariables> runner{{}};
   ActionTesting::emplace_group_component<registrar>(&runner);
   ActionTesting::emplace_component<array_component>(&runner, child_id);
+  // Since the action testing framework cannot create new elements, we
+  // need to create them, but don't have to initialize them
+  ActionTesting::emplace_component<array_component>(&runner, sibling_id);
+  ActionTesting::emplace_component<array_component>(
+      &runner, expected_child_upper_neighbor_id_0);
+  ActionTesting::emplace_component<array_component>(
+      &runner, expected_child_upper_neighbor_id_1);
+
   CHECK(ActionTesting::get_databox_tag<registrar,
                                        TestHelpers::amr::RegisteredElements<2>>(
             runner, 0)

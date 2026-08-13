@@ -24,6 +24,7 @@
 #include "Domain/Tags/NeighborMesh.hpp"
 #include "NumericalAlgorithms/Spectral/Mesh.hpp"
 #include "Parallel/ElementRegistration.hpp"
+#include "ParallelAlgorithms/Amr/Actions/PingNeighbors.hpp"
 #include "ParallelAlgorithms/Amr/Projectors/Mesh.hpp"
 #include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "ParallelAlgorithms/Initialization/MutateAssign.hpp"
@@ -102,6 +103,22 @@ struct InitializeChild {
         });
 
     Parallel::register_element<ParallelComponent>(box, cache, child_id);
+
+    // Ping neighbors
+    auto& amr_element_array =
+        Parallel::get_parallel_component<ParallelComponent>(cache);
+    const auto& my_element = db::get<::domain::Tags::Element<volume_dim>>(box);
+    for (const auto& [direction, neighbors_in_direction] :
+         my_element.neighbors()) {
+      for (const auto& neighbor_id : neighbors_in_direction.ids()) {
+        const auto& orientation =
+            neighbors_in_direction.orientation(neighbor_id);
+        const auto direction_from_neighbor = orientation(direction.opposite());
+        Parallel::simple_action<PingNeighbors>(amr_element_array[neighbor_id],
+                                               my_element.id(),
+                                               direction_from_neighbor);
+      }
+    }
   }
 };
 }  // namespace amr::Actions

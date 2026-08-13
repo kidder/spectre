@@ -25,6 +25,7 @@
 #include "ParallelAlgorithms/Amr/Projectors/DefaultInitialize.hpp"
 #include "ParallelAlgorithms/Amr/Projectors/Variables.hpp"
 #include "ParallelAlgorithms/Amr/Protocols/AmrMetavariables.hpp"
+#include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "ParallelAlgorithms/LinearSolver/Actions/MakeIdentityIfSkipped.hpp"
 #include "ParallelAlgorithms/LinearSolver/Gmres/Gmres.hpp"
 #include "ParallelAlgorithms/LinearSolver/Multigrid/ElementsAllocator.hpp"
@@ -165,7 +166,8 @@ struct Metavariables {
         typename linear_solver::amr_projectors,
         typename multigrid::amr_projectors, typename smoother::amr_projectors,
         ::amr::projectors::DefaultInitialize<
-            tmpl::list<domain::Tags::InitialExtents<volume_dim>,
+            tmpl::list<::amr::Tags::ReceivedNeighborPings<volume_dim>,
+                       domain::Tags::InitialExtents<volume_dim>,
                        domain::Tags::InitialRefinementLevels<volume_dim>>>,
         ::amr::projectors::ProjectVariables<volume_dim, helpers_mg::fields_tag,
                                             helpers_mg::sources_tag>>>;

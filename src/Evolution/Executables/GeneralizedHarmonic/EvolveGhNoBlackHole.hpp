@@ -18,6 +18,7 @@
 #include "Parallel/Protocols/RegistrationMetavariables.hpp"
 #include "ParallelAlgorithms/Actions/MutateApply.hpp"
 #include "ParallelAlgorithms/Amr/Projectors/CopyFromCreatorOrLeaveAsIs.hpp"
+#include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/GeneralRelativity/GaugeWave.hpp"
 #include "Time/Actions/SelfStartActions.hpp"
 #include "Time/AdvanceTime.hpp"
@@ -109,6 +110,7 @@ struct EvolutionMetavars
         evolution::dg::Initialization::ProjectSpectralFilters<
             volume_dim, typename system::variables_tag::tags_list>,
         ::amr::projectors::DefaultInitialize<
+            ::amr::Tags::ReceivedNeighborPings<volume_dim>,
             Initialization::Tags::InitialTimeDelta,
             Initialization::Tags::InitialSlabSize,
             ::domain::Tags::InitialExtents<volume_dim>,

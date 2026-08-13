@@ -35,6 +35,7 @@
 #include "ParallelAlgorithms/Amr/Actions/CreateParent.hpp"
 #include "ParallelAlgorithms/Amr/Projectors/DefaultInitialize.hpp"
 #include "ParallelAlgorithms/Amr/Protocols/AmrMetavariables.hpp"
+#include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "Utilities/StdHelpers.hpp"
 #include "Utilities/TMPL.hpp"
 
@@ -118,7 +119,8 @@ struct ArrayComponent {
   using simple_tags = tmpl::list<
       domain::Tags::Element<volume_dim>, domain::Tags::Mesh<volume_dim>,
       domain::Tags::NeighborMesh<volume_dim>, amr::Tags::Info<volume_dim>,
-      amr::Tags::NeighborInfo<volume_dim>>;
+      amr::Tags::NeighborInfo<volume_dim>,
+      amr::Tags::ReceivedNeighborPings<volume_dim>>;
   using phase_dependent_action_list = tmpl::list<Parallel::PhaseActions<
       Parallel::Phase::Initialization,
       tmpl::list<ActionTesting::InitializeDataBox<simple_tags>>>>;
@@ -154,7 +156,7 @@ struct Metavariables {
   struct amr : tt::ConformsTo<::amr::protocols::AmrMetavariables> {
     using projectors = tmpl::list<::amr::projectors::DefaultInitialize<
         Parallel::Tags::GlobalCache<Metavariables>,
-        domain::Tags::NeighborMesh<1>>>;
+        ::amr::Tags::ReceivedNeighborPings<1>, domain::Tags::NeighborMesh<1>>>;
     static constexpr bool keep_coarse_grids = KeepCoarseGrids;
     static constexpr bool p_refine_only_in_event = false;
   };
@@ -245,6 +247,10 @@ void test() {
                               element_3_mesh_post_refinement};
   amr::Info<1> element_4_info{{amr::Flag::Split}, element_4_mesh};
 
+  const ElementId<1> new_parent_id{0, std::array{SegmentId{2, 0}}};
+  const ElementId<1> new_lower_child_id{0, std::array{SegmentId{2, 2}}};
+  const ElementId<1> new_upper_child_id{0, std::array{SegmentId{2, 3}}};
+
   if constexpr (KeepCoarseGrids) {
     // Disable coarsening
     const amr::Policies policies{amr::Isotropy::Anisotropic, amr::Limits{},
@@ -269,25 +275,32 @@ void test() {
       {element_3_id, element_3_info}};
 
   using NeighborMeshes = DirectionalIdMap<1, Mesh<1>>;
-
+  using NeighborPings = DirectionMap<1, std::unordered_set<ElementId<1>>>;
   ActionTesting::MockRuntimeSystem<metavariables> runner{{::Verbosity::Debug}};
+  ActionTesting::emplace_component<singleton_component>(&runner, 0);
   ActionTesting::emplace_component_and_initialize<array_component>(
       &runner, element_1_id,
       {element_1, element_1_mesh, NeighborMeshes{}, element_1_info,
-       element_1_neighbor_info});
+       element_1_neighbor_info, NeighborPings{}});
   ActionTesting::emplace_component_and_initialize<array_component>(
       &runner, element_2_id,
       {element_2, element_2_mesh, NeighborMeshes{}, element_2_info,
-       element_2_neighbor_info});
+       element_2_neighbor_info, NeighborPings{}});
   ActionTesting::emplace_component_and_initialize<array_component>(
       &runner, element_3_id,
       {element_3, element_3_mesh, NeighborMeshes{}, element_3_info,
-       element_3_neighbor_info});
+       element_3_neighbor_info, NeighborPings{}});
   ActionTesting::emplace_component_and_initialize<array_component>(
       &runner, element_4_id,
       {element_4, element_4_mesh, NeighborMeshes{}, element_4_info,
-       element_4_neighbor_info});
-  ActionTesting::emplace_component<singleton_component>(&runner, 0);
+       element_4_neighbor_info, NeighborPings{}});
+  // Since the action testing framework cannot create new elements, we
+  // need to create them, but don't have to initialize them
+  ActionTesting::emplace_component<array_component>(&runner, new_parent_id);
+  ActionTesting::emplace_component<array_component>(&runner,
+                                                    new_lower_child_id);
+  ActionTesting::emplace_component<array_component>(&runner,
+                                                    new_upper_child_id);
 
   const auto check_for_empty_queues_on_elements =
       [&element_1_id, &element_2_id, &element_3_id, &element_4_id, &runner]() {
@@ -352,10 +365,6 @@ void test() {
     check_box(runner, element_3_id, element_3, element_3_mesh, NeighborMeshes{},
               element_3_info, element_3_neighbor_info);
   } else {
-    const ElementId<1> new_parent_id{
-        ElementId<1>{0, std::array{SegmentId{2, 0}}}};
-    const ElementId<1> new_lower_child_id{
-        ElementId<1>{0, std::array{SegmentId{2, 2}}}};
     const Element<1> element_3_post_refinement{
         element_3_id,
         DirectionMap<1, Neighbors<1>>{
@@ -390,11 +399,13 @@ void test_s1() {
   amr::Info<1> element_info{{amr::Flag::IncreaseResolution}, refined_mesh};
   std::unordered_map<ElementId<1>, amr::Info<1>> neighbor_info{};
   using NeighborMeshes = DirectionalIdMap<1, Mesh<1>>;
+  using NeighborPings = DirectionMap<1, std::unordered_set<ElementId<1>>>;
 
   ActionTesting::MockRuntimeSystem<metavariables> runner{{::Verbosity::Debug}};
   ActionTesting::emplace_component_and_initialize<array_component>(
       &runner, element_id,
-      {element, mesh, NeighborMeshes{}, element_info, neighbor_info});
+      {element, mesh, NeighborMeshes{}, element_info, neighbor_info,
+       NeighborPings{}});
   ActionTesting::emplace_component<singleton_component>(&runner, 0);
   CHECK(ActionTesting::is_simple_action_queue_empty<array_component>(
       runner, element_id));

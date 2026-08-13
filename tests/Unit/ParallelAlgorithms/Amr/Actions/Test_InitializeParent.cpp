@@ -32,6 +32,7 @@
 #include "Parallel/Protocols/RegistrationMetavariables.hpp"
 #include "ParallelAlgorithms/Amr/Actions/InitializeParent.hpp"
 #include "ParallelAlgorithms/Amr/Protocols/AmrMetavariables.hpp"
+#include "ParallelAlgorithms/Amr/Tags.hpp"
 #include "Utilities/Gsl.hpp"
 #include "Utilities/ProtocolHelpers.hpp"
 #include "Utilities/TMPL.hpp"
@@ -48,7 +49,8 @@ struct Component {
   using simple_tags = tmpl::list<
       domain::Tags::Element<volume_dim>, domain::Tags::Mesh<volume_dim>,
       domain::Tags::NeighborMesh<volume_dim>, amr::Tags::Info<volume_dim>,
-      amr::Tags::NeighborInfo<volume_dim>>;
+      amr::Tags::NeighborInfo<volume_dim>,
+      amr::Tags::ReceivedNeighborPings<volume_dim>>;
   using phase_dependent_action_list = tmpl::list<Parallel::PhaseActions<
       Parallel::Phase::Initialization,
       tmpl::list<ActionTesting::InitializeDataBox<simple_tags>>>>;
@@ -261,33 +263,33 @@ void test() {
                                amr::Flag::DoNothing},
                     neighbor_mesh}}};
 
-  using TaggedTupleType =
-      tuples::TaggedTuple<Parallel::Tags::MetavariablesImpl<Metavariables>,
-                          Parallel::Tags::ArrayIndex<ElementId<3>>,
-                          Parallel::Tags::GlobalCache<Metavariables>,
-                          domain::Tags::Element<3>, domain::Tags::Mesh<3>,
-                          domain::Tags::NeighborMesh<3>, amr::Tags::Info<3>,
-                          amr::Tags::NeighborInfo<3>>;
+  using TaggedTupleType = tuples::TaggedTuple<
+      Parallel::Tags::MetavariablesImpl<Metavariables>,
+      Parallel::Tags::ArrayIndex<ElementId<3>>,
+      Parallel::Tags::GlobalCache<Metavariables>, domain::Tags::Element<3>,
+      domain::Tags::Mesh<3>, domain::Tags::NeighborMesh<3>, amr::Tags::Info<3>,
+      amr::Tags::NeighborInfo<3>, amr::Tags::ReceivedNeighborPings<3>>;
   std::unordered_map<ElementId<3>, TaggedTupleType> children_items;
   DirectionalIdMap<3, Mesh<3>> unused_child_neighbor_mesh{};
+  using NeighborPings = DirectionMap<3, std::unordered_set<ElementId<3>>>;
   children_items.emplace(
       child_1_id,
       TaggedTupleType{Metavariables{}, child_1_id, nullptr, std::move(child_1),
                       std::move(child_1_mesh), unused_child_neighbor_mesh,
-                      std::move(child_1_info),
-                      std::move(child_1_neighbor_info)});
+                      std::move(child_1_info), std::move(child_1_neighbor_info),
+                      NeighborPings{}});
   children_items.emplace(
       child_2_id,
       TaggedTupleType{Metavariables{}, child_2_id, nullptr, std::move(child_2),
                       std::move(child_2_mesh), unused_child_neighbor_mesh,
-                      std::move(child_2_info),
-                      std::move(child_2_neighbor_info)});
+                      std::move(child_2_info), std::move(child_2_neighbor_info),
+                      NeighborPings{}});
   children_items.emplace(
       child_3_id,
       TaggedTupleType{Metavariables{}, child_3_id, nullptr, std::move(child_3),
                       std::move(child_3_mesh), unused_child_neighbor_mesh,
-                      std::move(child_3_info),
-                      std::move(child_3_neighbor_info)});
+                      std::move(child_3_info), std::move(child_3_neighbor_info),
+                      NeighborPings{}});
 
   DirectionMap<3, Neighbors<3>> expected_parent_neighbors{};
   expected_parent_neighbors.emplace(
@@ -342,6 +344,16 @@ void test() {
   ActionTesting::MockRuntimeSystem<Metavariables> runner{{}};
   ActionTesting::emplace_group_component<registrar>(&runner);
   ActionTesting::emplace_component<array_component>(&runner, parent_id);
+  // Since the action testing framework cannot create new elements, we
+  // need to create them, but don't have to initialize them
+  ActionTesting::emplace_component<array_component>(&runner, neighbor_3_id);
+  ActionTesting::emplace_component<array_component>(&runner, neighbor_5_id);
+  ActionTesting::emplace_component<array_component>(&runner, neighbor_6_id);
+  ActionTesting::emplace_component<array_component>(&runner, neighbor_9_id);
+  ActionTesting::emplace_component<array_component>(&runner, neighbor_10_id);
+  ActionTesting::emplace_component<array_component>(&runner, neighbor_11_id);
+  ActionTesting::emplace_component<array_component>(&runner, neighbor_12_id);
+
   CHECK(ActionTesting::get_databox_tag<registrar,
                                        TestHelpers::amr::RegisteredElements<3>>(
             runner, 0)
