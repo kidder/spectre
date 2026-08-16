@@ -1,0 +1,619 @@
+# Distributed under the MIT License.
+# See LICENSE.txt for details.
+
+# Build all test executables and run unit tests on a variety of compiler
+# configurations.
+name: Unit tests
+
+on: workflow_call
+
+jobs:
+  unit_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    strategy:
+      fail-fast: false
+      matrix:
+        # We have a sparse clang test configuration to reduce the amount of
+        # GitHub cache space we use. GCC being the production compiler on
+        # supercomputers means we need to thoroughly test it.
+        compiler:
+          - gcc-10
+          - gcc-11
+          - gcc-13
+        build_type: [Debug, Release]
+        include:
+          # Generate code coverage report for a single build
+          # Note: currently disabled because it exceeds the available disk space
+          # - compiler: gcc-9
+          #   build_type: Debug
+          #   COVERAGE: ON
+          #   TEST_TIMEOUT_FACTOR: 3
+          # This configuration seems to run consistently slower than newer gcc
+          # or clang builds, so we increase the test timeout a bit
+          - compiler: gcc-10
+            build_type: Debug
+            TEST_TIMEOUT_FACTOR: 2
+            # Test 3D rendering with ParaView
+            # Note: currently disabled because of some unknown upstream issue
+            # test_3d_rendering: ON
+            # Need Python version consistent with ParaView
+            PYTHON_VERSION: "3.9"
+          # Test with Kokkos enabled but without CUDA
+          - compiler: gcc-10
+            build_type: Release
+            KOKKOS: ON
+            # Disable FMA optimizations to avoid this issue:
+            # https://github.com/sxs-collaboration/spectre/issues/5145
+            EXTRA_CXX_FLAGS: "-mno-fma"
+          # Don't modify the gcc-11 Debug build so its cache can be reused for
+          # the documentation build
+          # - compiler: gcc-11
+          #   build_type: Debug
+          # Test with Python 3.8 so that we retain backwards compatibility. We
+          # keep track of Python versions on supercomputers in this issue:
+          # https://github.com/sxs-collaboration/spectre/issues/442
+          - compiler: gcc-11
+            build_type: Release
+            PYTHON_VERSION: "3.8"
+            # Disable building executable for this build for now because it
+            # exceeds the available memory. See issue:
+            # https://github.com/sxs-collaboration/spectre/issues/5472
+            test_executables: OFF
+          # Test building with static libraries. Do so with clang in release
+          # mode because these builds use up little disk space compared to GCC
+          # builds or clang Debug builds
+          - compiler: clang-13
+            build_type: Release
+            BUILD_SHARED_LIBS: OFF
+            use_xsimd: ON
+            MEMORY_ALLOCATOR: JEMALLOC
+          # Add a test without PCH to the build matrix, which only builds core
+          # libraries. Building all the tests without the PCH takes very long
+          # and the most we would catch is a missing include of something that's
+          # in the PCH.
+          # Use this test also to build and test all input files with "normal"
+          # or higher priority. The other configurations only test input files
+          # with "high" priority to reduce the total build time.
+          - compiler: clang-13
+            build_type: Debug
+            use_pch: OFF
+            unit_tests: OFF
+            input_file_tests_min_priority: "normal"
+          # Test with ASAN
+          - compiler: clang-14
+            build_type: Debug
+            # When building with ASAN we also need python bindings to be
+            # disabled because otherwise we get link errors. See issue:
+            # https://github.com/sxs-collaboration/spectre/issues/1890
+            # So we are also using this build to test building without Python
+            # bindings enabled.
+            ASAN: ON
+            BUILD_PYTHON_BINDINGS: OFF
+            MEMORY_ALLOCATOR: JEMALLOC
+            TEST_TIMEOUT_FACTOR: 2
+          - compiler: clang-14
+            build_type: Release
+            # Test compatibility with oldest supported CMake version
+            CMAKE_VERSION: "3.18.2"
+            # Use an MPI version of Charm
+            CHARM_ROOT: /work/charm_7_0_0/mpi-linux-x86_64-smp-clang
+            # MPI running tests is a bit slower than multicore
+            TEST_TIMEOUT_FACTOR: 3
+            # If MPI should be tested
+            USE_MPI: ON
+            # Test `install` target with clang in Release mode because it uses
+            # little disk space
+            install: ON
+          # Test compiling with nvcc and CUDA
+          - compiler: nvcc-12-6
+            SPECTRE_AUTODIFF: OFF
+            CUDA: ON
+            KOKKOS: ON
+            # Compile for NVIDIA Ampere architecture. Can't run this on
+            # GitHub-hosted runners because they don't have the GPU hardware,
+            # but we can test the compilation.
+            KOKKOS_ARCH: "AMPERE80"
+            # Compile in Release mode to speed up the build
+            build_type: Release
+            # Build with static libs because Kokkos CUDA doesn't support shared
+            # libs
+            BUILD_SHARED_LIBS: OFF
+            # Build only a subset of the code because compiling the full code is
+            # too slow and exceeds the available memory. We should extend this
+            # to the full code once we have a better solution for the memory
+            # issue. See 'Test nvcc support' step below.
+            unit_tests: OFF
+            test_executables: OFF
+            # Enable PlaneWave3D.yaml input file test
+            input_file_tests_min_priority: "normal"
+            # Disable pybindings until they support nvcc
+            BUILD_PYTHON_BINDINGS: OFF
+            # Disable warnings as nvcc emits a lot of them from system headers
+            ENABLE_WARNINGS: OFF
+    container:
+      image: ${{ inputs.container || 'sxscollaboration/spectre:dev' }}
+      volumes:
+        - /usr/local:/mnt/host-usr-local
+        - /usr/share:/mnt/host-usr-share
+        - /opt:/mnt/host-opt
+      env:
+        # We make sure to use a fixed absolute path for the ccache directory
+        CCACHE_DIR: /work/ccache
+        # Use a separate temp directory to conserve cache space on GitHub
+        CCACHE_TEMPDIR: /work/ccache-tmp
+        # Control the max cache size. We evict unused entries in a step below to
+        # make sure that each build only uses what it need of this max size.
+        CCACHE_MAXSIZE: "2G"
+        # Control the compression level. The ccache docs recommend at most level
+        # 5 to avoid slowing down compilation.
+        CCACHE_COMPRESS: 1
+        CCACHE_COMPRESSLEVEL: 5
+        # We hash the content of the compiler rather than the location and mtime
+        # to make sure the cache works across the different machines
+        CCACHE_COMPILERCHECK: content
+        # Rewrite absolute paths starting with this base dir to relative paths
+        # before hashing. This is needed to reuse the cache for the formaline
+        # test below, which builds in a different directory.
+        CCACHE_BASEDIR: $GITHUB_WORKSPACE
+        # These vars are to allow running charm with MPI as root inside the
+        # container which arises from using the "--privileged" flag just below.
+        OMPI_ALLOW_RUN_AS_ROOT: 1
+        OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
+        # The number of cores to run on. This is given at:
+        # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
+        NUMBER_OF_CORES: 4
+      # See https://lists.cs.illinois.edu/lists/arc/charm/2018-10/msg00011.html
+      # for why we need this
+      options: --privileged
+    steps:
+      - name: Free host disk space
+        run: |
+          df -h /
+          rm -rf /mnt/host-usr-local/lib/android \
+                 /mnt/host-usr-local/.ghcup \
+                 /mnt/host-usr-local/julia* \
+                 /mnt/host-opt/hostedtoolcache \
+                 /mnt/host-usr-share/dotnet \
+                 /mnt/host-usr-share/swift \
+                 /mnt/host-usr-share/miniconda \
+                 /mnt/host-opt/microsoft /mnt/host-opt/google || true
+          df -h /
+      - name: Record start time
+        id: start
+        run: |
+          echo "time=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      # Work around https://github.com/actions/checkout/issues/760
+      - name: Trust checkout
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+      - uses: ./.github/actions/parse-compiler
+        with:
+          compiler: ${{ matrix.compiler }}
+      # Install the selected compiler. We don't bundle all of them in the
+      # container because they take up a lot of space.
+      - name: Install compiler
+        run: |
+          add-apt-repository ppa:ubuntu-toolchain-r/test
+          apt-get update -y
+          if [[ $COMPILER_ID = gcc ]]; then
+            apt-get install -y $CC $CXX $FC
+          elif [[ $COMPILER_ID = clang ]]; then
+            apt-get install -y $CC $FC
+          elif [[ $COMPILER_ID = nvcc ]]; then
+            # Install CUDA
+            wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+            dpkg -i cuda-keyring_1.1-1_all.deb
+            apt-get update -y
+            apt-get install -y cuda-nvcc-${COMPILER_VERSION} \
+              build-essential libc6-dev pkg-config
+            echo "/usr/local/cuda-${COMPILER_VERSION/-/.}/bin" >> $GITHUB_PATH
+          fi
+      - name: Install Kokkos
+        if: matrix.KOKKOS == 'ON'
+        working-directory: /work
+        run: |
+          KOKKOS_VERSION=4.4.00
+          wget -O kokkos.tar.gz "https://github.com/kokkos/kokkos/releases/download/${KOKKOS_VERSION}/kokkos-${KOKKOS_VERSION}.tar.gz"
+          tar -xzf kokkos.tar.gz && mv kokkos-* kokkos && cd kokkos
+          mkdir build && cd build
+          cmake .. \
+            -D CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -D CMAKE_INSTALL_PREFIX=/usr/local \
+            -D Kokkos_ENABLE_SERIAL=ON \
+            -D Kokkos_ENABLE_OPENMP=ON \
+            -D Kokkos_ENABLE_CUDA=${{ matrix.CUDA || 'OFF' }} \
+            -D Kokkos_ARCH_${{ matrix.KOKKOS_ARCH || 'X86_64' }}=ON \
+            -D Kokkos_ENABLE_CUDA_CONSTEXPR=ON \
+            -D Kokkos_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE=ON \
+            -D CMAKE_POSITION_INDEPENDENT_CODE=ON
+          make -j ${NUMBER_OF_CORES} install
+          cd ../../ && rm -rf kokkos.tar.gz kokkos
+          # Use Kokkos compiler wrapper for nvcc
+          if [[ $COMPILER_ID = nvcc ]]; then
+            echo "CXX=/usr/local/bin/nvcc_wrapper" >> $GITHUB_ENV
+          fi
+      # Install specific CMake version if requested
+      - name: Install CMake version
+        if: matrix.CMAKE_VERSION
+        working-directory: /work
+        run: |
+          CMAKE_VERSION=${{ matrix.CMAKE_VERSION }}
+          wget -O cmake-install.sh "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh"
+          sh cmake-install.sh --prefix=/usr --skip-license
+          rm cmake-install.sh
+      - name: Install Python version
+        if: matrix.PYTHON_VERSION
+        run: |
+          add-apt-repository ppa:deadsnakes/ppa
+          apt install -y python${{ matrix.PYTHON_VERSION }}-dev \
+            python${{ matrix.PYTHON_VERSION }}-venv \
+            python${{ matrix.PYTHON_VERSION }}-distutils
+          update-alternatives --install /usr/bin/python3 python3 \
+            /usr/bin/python${{ matrix.PYTHON_VERSION }} 1
+      - name: Install Python dependencies
+        if: matrix.PYTHON_VERSION
+        run: |
+          python${{ matrix.PYTHON_VERSION }} -m pip install \
+            -r support/Python/requirements.txt \
+            -r support/Python/dev_requirements.txt
+          python${{ matrix.PYTHON_VERSION }} -m pip list -v
+      - name: Install ParaView
+        if: matrix.test_3d_rendering == 'ON'
+        working-directory: /work
+        # Can't just `apt-get install python3-paraview` because we need the
+        # headless build of ParaView. So we download a binary from paraview.org
+        # (which is built for a specific Python version unfortunately).
+        run: |
+          apt-get install -y libglvnd-dev  # Needed to find 'libglapi.so'
+          wget -O paraview.tar.gz --no-check-certificate "https://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.10&type=binary&os=Linux&downloadFile=ParaView-5.10.1-osmesa-MPI-Linux-Python3.9-x86_64.tar.gz"
+          tar -xzf paraview.tar.gz
+          rm paraview.tar.gz
+          mv ParaView-* /opt/paraview
+          echo "/opt/paraview/bin" >> $GITHUB_PATH
+          # Make 'paraview' Python package available
+          PYTHONPATH=/opt/paraview/lib/python3.9/site-packages:$PYTHONPATH
+          # Give system-installed Python packages priority over ParaView's
+          PYTHONPATH=$pythonLocation/lib/python3.9/site-packages:$PYTHONPATH
+          echo "PYTHONPATH=$PYTHONPATH" >> $GITHUB_ENV
+      - name: Install MPI and Charm++
+        if: matrix.USE_MPI == 'ON'
+        working-directory: /work
+        run: |
+          apt-get install -y libopenmpi-dev
+          cd /work/charm_7_0_0 && ./build charm++ mpi-linux-x86_64-smp clang \
+          -j ${NUMBER_OF_CORES} -g0 -O1 --build-shared --with-production
+      # Assign a unique cache key for every run.
+      # - We will save the cache using this unique key, but only on the develop
+      #   branch. This way we regularly update the cache without filling up the
+      #   storage space with caches from other branches.
+      # - To restore the most recent cache we provide a partially-matched
+      #   "restore key".
+      - name: Restore ccache
+        uses: actions/cache/restore@v5
+        id: restore-ccache
+        env:
+          CACHE_KEY_PREFIX: "ccache-${{ matrix.compiler }}-\
+${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
+        with:
+          path: /work/ccache
+          key: "${{ env.CACHE_KEY_PREFIX }}-${{ github.run_id }}"
+          restore-keys: |
+            ${{ env.CACHE_KEY_PREFIX }}-
+      - name: Configure ccache
+        # Print the ccache configuration and reset statistics
+        run: |
+          ccache -pz
+      - name: Clear ccache
+        # Clear ccache if requested
+        if: >
+          github.event_name == 'workflow_dispatch'
+            && github.event.inputs.clear_ccache == 'yes'
+        run: |
+          ccache -C
+      - name: Configure build with cmake
+        # Notes on the build configuration:
+        # - We don't need debug symbols during CI, so we turn them off to reduce
+        #   memory usage.
+        # - We run unit tests with the following compiler flags:
+        #   -Werror: Treat warnings as error.
+        #   -march=x86-64: Make sure we are building on a consistent
+        #   architecture so caching works. This is necessary because GitHub may
+        #   run the job on different hardware.
+        run: >
+          mkdir build && cd build
+
+          ENABLE_WARNINGS=${{ matrix.ENABLE_WARNINGS }}
+          WERROR="${{ matrix.WERROR != 'OFF' && '-Werror' || '' }}"
+          CXX_FLAGS="${WERROR} ${{ matrix.EXTRA_CXX_FLAGS }}"
+          PYTHON_VERSION=${{ matrix.PYTHON_VERSION }}
+          BUILD_PYTHON_BINDINGS=${{ matrix.BUILD_PYTHON_BINDINGS }}
+          BUILD_SHARED_LIBS=${{ matrix.BUILD_SHARED_LIBS }}
+          KOKKOS=${{ matrix.KOKKOS }}
+          MATRIX_CHARM_ROOT=${{ matrix.CHARM_ROOT }}
+          ASAN=${{ matrix.ASAN }}
+          MEMORY_ALLOCATOR=${{ matrix.MEMORY_ALLOCATOR }}
+          UBSAN_UNDEFINED=${{ matrix.UBSAN_UNDEFINED }}
+          UBSAN_INTEGER=${{ matrix.UBSAN_INTEGER }}
+          USE_PCH=${{ matrix.use_pch }}
+          USE_XSIMD=${{ matrix.use_xsimd }}
+          COVERAGE=${{ matrix.COVERAGE }}
+          TEST_TIMEOUT_FACTOR=${{ matrix.TEST_TIMEOUT_FACTOR }}
+          INPUT_FILE_MIN_PRIO=${{ matrix.input_file_tests_min_priority }}
+          SPECTRE_AUTODIFF=${{ matrix.SPECTRE_AUTODIFF }}
+
+          cmake --version
+
+          cmake
+          -D CMAKE_C_COMPILER=${CC}
+          -D CMAKE_CXX_COMPILER=${CXX}
+          -D CMAKE_Fortran_COMPILER=${FC}
+          -D Python_EXECUTABLE=/usr/bin/python${PYTHON_VERSION:-'3'}
+          -D CMAKE_CXX_FLAGS="${CXX_FLAGS}"
+          -D OVERRIDE_ARCH=x86-64
+          -D ENABLE_WARNINGS=${ENABLE_WARNINGS:-'ON'}
+          -D CHARM_ROOT=${MATRIX_CHARM_ROOT:-$CHARM_ROOT}
+          -D CMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -D SPECTRE_DEBUG_Og=ON
+          -D DEBUG_SYMBOLS=OFF
+          -D BACKTRACE_LIB=/usr/local/lib/libbacktrace.a
+          -D BACKTRACE_HEADER_DIR=/usr/local/include
+          -D UNIT_TESTS_IN_TEST_EXECUTABLES=OFF
+          -D SPECTRE_INPUT_FILE_TEST_MIN_PRIORITY=${INPUT_FILE_MIN_PRIO:-'high'}
+          -D STRIP_SYMBOLS=ON
+          -D STUB_EXECUTABLE_OBJECT_FILES=ON
+          -D STUB_LIBRARY_OBJECT_FILES=ON
+          -D USE_PCH=${USE_PCH:-'ON'}
+          -D USE_XSIMD=${USE_XSIMD:-'ON'}
+          -D USE_CCACHE=ON
+          -D ENABLE_OPENMP=ON
+          -D SPECTRE_KOKKOS=${KOKKOS:-'OFF'}
+          -D COVERAGE=${COVERAGE:-'OFF'}
+          -D BUILD_PYTHON_BINDINGS=${BUILD_PYTHON_BINDINGS:-'ON'}
+          -D BUILD_SHARED_LIBS=${BUILD_SHARED_LIBS:-'ON'}
+          -D ASAN=${ASAN:-'OFF'}
+          -D UBSAN_UNDEFINED=${UBSAN_UNDEFINED:-'OFF'}
+          -D UBSAN_INTEGER=${UBSAN_INTEGER:-'OFF'}
+          -D MEMORY_ALLOCATOR=${MEMORY_ALLOCATOR:-'SYSTEM'}
+          -D SPECTRE_UNIT_TEST_TIMEOUT_FACTOR=${TEST_TIMEOUT_FACTOR:-'1'}
+          -D SPECTRE_INPUT_FILE_TEST_TIMEOUT_FACTOR=${TEST_TIMEOUT_FACTOR:-'1'}
+          -D SPECTRE_PYTHON_TEST_TIMEOUT_FACTOR=${TEST_TIMEOUT_FACTOR:-'1'}
+          -D CMAKE_INSTALL_PREFIX=/work/spectre_install
+          -D BUILD_DOCS=OFF
+          -D SPECTRE_AUTODIFF=${SPECTRE_AUTODIFF:-'ON'}
+          -D SPECTRE_FETCH_MISSING_DEPS=ON
+          --warn-uninitialized
+          $GITHUB_WORKSPACE 2>&1 | tee CMakeOutput.txt 2>&1
+      - name: Check for CMake warnings
+        working-directory: build
+        run: |
+          ! grep -A 6 "CMake Warning" ./CMakeOutput.txt
+      - name: Build unit tests
+        if: matrix.unit_tests != 'OFF'
+        working-directory: build
+        run: |
+          make -j${NUMBER_OF_CORES} unit-tests
+      - name: Run unit tests
+        if: matrix.unit_tests != 'OFF' && matrix.COVERAGE != 'ON'
+        working-directory: build
+        run: |
+          # We get occasional random timeouts, repeat tests to see if
+          # it is a random timeout or systematic.
+          #
+          # We run ctest -L unit before build test-executables to make
+          # sure that all the unit tests are actually built by the
+          # unit-tests target.
+          ctest -j${NUMBER_OF_CORES} -L unit \
+              --output-on-failure --repeat after-timeout:3
+      - name: Run unit tests with coverage reporting
+        if: matrix.COVERAGE == 'ON'
+        working-directory: build
+        run: |
+          make unit-test-coverage
+          rm -r docs/html/unit-test-coverage
+      - name: Upload coverage report to codecov.io
+        if: matrix.COVERAGE == 'ON'
+        uses: codecov/codecov-action@v4
+        with:
+          files: build/tmp/coverage.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          # Display the job as failed if upload fails (defaults to false for
+          # some reason)
+          fail_ci_if_error: true
+        # We currently don't require codecov in our guidelines, so don't fail
+        # the CI build if codecov fails to upload
+        continue-on-error: true
+      # Test only a few unit tests with nvcc for now because compiling the full
+      # suite is too slow and exceed the available memory. We should extend this
+      # to the full suite once we have a better solution for the memory issue.
+      - name: Test nvcc support
+        if: matrix.CUDA == 'ON'
+        working-directory: build
+        run: |
+          make -j${NUMBER_OF_CORES} \
+            Test_DataStructures \
+            Test_Tensor \
+            Test_Kokkos \
+            Test_Spectral \
+            Test_Utilities \
+            EvolveScalarWave3D
+          # Can't run these tests on GitHub-hosted runners because they don't
+          # have GPU hardware.
+          # ./bin/Test_DataStructures
+          # ./bin/Test_Tensor
+          # ./bin/Test_Kokkos
+          # ./bin/Test_Spectral
+          # ./bin/Test_Utilities
+          # ctest -R PlaneWave3D.yaml --output-on-failure
+      # Avoid running out of disk space by cleaning up the build directory
+      - name: Clean up unit tests
+        working-directory: build
+        run: |
+          pwd
+          ls | xargs du -sh
+          du -sh .
+          rm -f bin/Test_*
+      # Build the executables in a single thread to reduce memory usage
+      # sufficiently so they compile on the GitHub-hosted runners
+      - name: Build executables
+        if: matrix.COVERAGE != 'ON' && matrix.test_executables != 'OFF'
+        working-directory: build
+        run: |
+          make test-executables
+      - name: Build Benchmark executable
+        if: matrix.build_type == 'Release'
+        working-directory: build
+        run: |
+          make -j${NUMBER_OF_CORES} Benchmark
+      # Delete unused cache entries before uploading the cache
+      - name: Clean up ccache
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          now=$(date +%s)
+          job_duration=$((now - ${{ steps.start.outputs.time }}))
+          ccache --evict-older-than "${job_duration}s"
+      # Save the cache after everything has been built. Also save on failure or
+      # on cancellation (`always()`) because a partial cache is better than no
+      # cache.
+      - name: Save ccache
+        if: always() && github.ref == 'refs/heads/develop'
+        uses: actions/cache/save@v5
+        with:
+          path: /work/ccache
+          key: ${{ steps.restore-ccache.outputs.cache-primary-key }}
+      - name: Print size of build directory
+        working-directory: build
+        run: |
+          pwd
+          ls | xargs du -sh
+          du -sh .
+      - name: Diagnose ccache
+        run: |
+          ccache -s
+      - name: Run non-unit tests
+        if: matrix.COVERAGE != 'ON' && matrix.test_executables != 'OFF'
+        working-directory: build
+        run: |
+          # We get occasional random timeouts, repeat tests to see if
+          # it is a random timeout or systematic
+          #
+          # Only use 2 cores because these tests run more slowly.
+          ctest -j2 -LE unit --output-on-failure \
+                --repeat after-timeout:3
+      - name: Install
+        if: matrix.install == 'ON'
+        working-directory: build
+        # Make sure the `install` target runs without error. We could add some
+        # basic smoke tests here to make sure the installation worked.
+        run: |
+          make install
+      - name: Print size of install directory
+        if: matrix.install == 'ON'
+        working-directory: /work/spectre_install
+        # Remove files post-install to reduce disk space for later on.
+        run: |
+          pwd
+          ls | xargs du -sh
+          du -sh .
+          rm -r ./*
+      - name: Test formaline tar can be built
+        # - We only run the formaline tests in debug mode to reduce total build
+        #   time in CI. We don't run them with ASAN because then we run out of
+        #   disk space.
+        # - We do run for all compilers, though, because formaline injects data
+        #   at the linking stage, which means we are somewhat tied to the
+        #   compiler version.
+        # - We make sure to use the same compiler flags as the full build above
+        #   so ccache is able to speed up the build.
+        if: >
+          matrix.build_type == 'Debug'
+            && matrix.ASAN != 'ON'
+            && matrix.test_executables != 'OFF'
+        working-directory: build
+        run: >
+          make EvolveBurgers -j${NUMBER_OF_CORES}
+
+          if [ ! -f ./bin/EvolveBurgers ]; then
+            echo "Could not find the executable EvolveBurgers";
+            echo "which we use for testing formaline";
+            exit 1
+          fi
+
+          # We disable ASAN's leak sanitizer because Charm++ has false
+          # positives that would cause the build to fail. We disable
+          # leak sanitizer for the ctest runs inside CMake anyway.
+
+          ASAN_OPTIONS=detect_leaks=0 ./bin/EvolveBurgers
+          --dump-source-tree-as spectre_src --dump-only
+
+          mkdir spectre_src;
+          mv spectre_src.tar.gz spectre_src;
+          cd spectre_src;
+          tar xf spectre_src.tar.gz;
+          mkdir build-formaline;
+          cd build-formaline
+
+          ENABLE_WARNINGS=${{ matrix.ENABLE_WARNINGS }}
+          WERROR="${{ matrix.WERROR != 'OFF' && '-Werror' || '' }}"
+          CXX_FLAGS="${WERROR} ${{ matrix.EXTRA_CXX_FLAGS }}"
+          PYTHON_VERSION=${{ matrix.PYTHON_VERSION }}
+          BUILD_PYTHON_BINDINGS=${{ matrix.BUILD_PYTHON_BINDINGS }}
+          MATRIX_CHARM_ROOT=${{ matrix.CHARM_ROOT }}
+          MEMORY_ALLOCATOR=${{ matrix.MEMORY_ALLOCATOR }};
+          USE_PCH=${{ matrix.use_pch }};
+          USE_XSIMD=${{ matrix.use_xsimd }}
+
+          cmake
+          -D CMAKE_C_COMPILER=${CC}
+          -D CMAKE_CXX_COMPILER=${CXX}
+          -D CMAKE_Fortran_COMPILER=${FC}
+          -D Python_EXECUTABLE=/usr/bin/python${PYTHON_VERSION:-'3'}
+          -D CMAKE_CXX_FLAGS="${CXX_FLAGS}"
+          -D OVERRIDE_ARCH=x86-64
+          -D ENABLE_WARNINGS=${ENABLE_WARNINGS:-'ON'}
+          -D BUILD_SHARED_LIBS=ON
+          -D CHARM_ROOT=${MATRIX_CHARM_ROOT:-$CHARM_ROOT}
+          -D CMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -D SPECTRE_DEBUG_Og=ON
+          -D DEBUG_SYMBOLS=OFF
+          -D UNIT_TESTS_IN_TEST_EXECUTABLES=OFF
+          -D STRIP_SYMBOLS=ON
+          -D STUB_EXECUTABLE_OBJECT_FILES=ON
+          -D STUB_LIBRARY_OBJECT_FILES=ON
+          -D USE_PCH=${USE_PCH:-'ON'}
+          -D USE_XSIMD=${USE_XSIMD:-'ON'}
+          -D USE_CCACHE=ON
+          -D BUILD_PYTHON_BINDINGS=${BUILD_PYTHON_BINDINGS:-'ON'}
+          -D MEMORY_ALLOCATOR=${MEMORY_ALLOCATOR:-'SYSTEM'}
+          -D BUILD_DOCS=OFF
+          -D SPECTRE_AUTODIFF=ON
+          -D SPECTRE_FETCH_MISSING_DEPS=ON
+          ..
+
+          make EvolveBurgers -j${NUMBER_OF_CORES}
+
+          # Run on multiple cores to run both the "parse" and "execute" tests
+          # simultaneously.
+
+          ctest -j${NUMBER_OF_CORES} -R InputFiles.Burgers.Step.yaml
+          --output-on-failure
+
+          cd .. && rm -r build-formaline
+      - name: Test bundled exporter
+        if: matrix.ASAN != 'ON' && matrix.CUDA != 'ON'
+        working-directory: build
+        run: |
+          make -j${NUMBER_OF_CORES} BundledExporter
+          mkdir build-test-exporter && cd build-test-exporter
+          cmake -D SPECTRE_ROOT=$GITHUB_WORKSPACE/build \
+            $GITHUB_WORKSPACE/tests/Unit/IO/Exporter/BundledExporter
+          make -j${NUMBER_OF_CORES}
+          ./TestSpectreExporter \
+            $GITHUB_WORKSPACE/tests/Unit/Visualization/Python/VolTestData0.h5 \
+            element_data 0 Psi 0 0 0 -0.07059806932542323
+          cd .. && rm -r build-test-exporter
+      - name: Diagnose ccache
+        run: |
+          ccache -s

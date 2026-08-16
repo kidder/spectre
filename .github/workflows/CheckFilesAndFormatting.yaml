@@ -1,0 +1,99 @@
+# Distributed under the MIT License.
+# See LICENSE.txt for details.
+
+# - Run simple textual checks over files in the repository, e.g. checking for
+#   a license, line length limits etc. See `tools/CheckFiles.sh` for details.
+# - Run format checker for python to make sure the code is formatted correctly
+# - Check the metadata are consistent
+name: Files and formatting
+
+on: workflow_call
+
+jobs:
+  check_files_and_formatting:
+    name: Files and formatting
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ inputs.container || 'sxscollaboration/spectre:dev' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # Work around https://github.com/actions/checkout/issues/760
+      - name: Trust checkout
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+      # The action above checks out the `github.ref` by default, which points to
+      # the merge commit with the target branch for pull-request events. For
+      # this job we check out the pull-request HEAD instead. It makes
+      # git-related issues easier to debug because the state matches the local
+      # repository. It also prevents releases that happened since the
+      # pull-request branch was last rebased from disrupting tests that involve
+      # the latest release tag.
+      - name: Checkout pull-request HEAD
+        if: github.event_name == 'pull_request'
+        run: |
+          git checkout ${{ github.event.pull_request.head.sha }}
+      # Some tests involve release tags, which may not have been pushed to
+      # forks. Fetching them here.
+      - name: Fetch upstream tags on forks
+        if: github.repository != 'sxs-collaboration/spectre'
+        run: |
+          git fetch --tags https://github.com/sxs-collaboration/spectre
+      - name: Install Python dependencies
+        run: |
+          pip3 install -r .github/scripts/requirements-release.txt
+          pip3 install -r support/Python/dev_requirements.txt
+      - name: Test tools
+        run: |
+          python3 -m unittest discover -p 'Test_CompileReleaseNotes.py' \
+            tests.tools -v
+      - name: Check Python formatting
+        run: |
+          cd $GITHUB_WORKSPACE
+          echo "Using 'black' to check Python formatting..."
+          black --check --extend-exclude '/external/' .
+          echo "Using 'isort' to check Python formatting..."
+          isort --check-only --extend-skip external .
+      - name: Test script
+        run: |
+          cd $GITHUB_WORKSPACE
+          ./tools/CheckFiles.sh --test
+      - name: Check files
+        run: |
+          cd $GITHUB_WORKSPACE
+          ./tools/CheckFiles.sh
+      - name: Check metadata
+        run: |
+          python3 tools/CheckMetadata.py
+      - name: Check the metadata is consistent with the releases
+        # No need to check this on forks. They would need to set a Zenodo token
+        # for this test. Also disable on PRs because they don't have access to
+        # the repo's secrets.
+        if: >
+          github.repository == 'sxs-collaboration/spectre'
+            && github.event_name != 'pull_request'
+        run: |
+          python3 .github/scripts/Release.py prepare -vv --check-only \
+            --zenodo-token ${{ secrets.ZENODO_READONLY_TOKEN }} \
+            --github-token ${{ secrets.GITHUB_TOKEN }}
+          python3 .github/scripts/Release.py publish -vv --check-only \
+            --zenodo-token ${{ secrets.ZENODO_READONLY_TOKEN }} \
+            --github-token ${{ secrets.GITHUB_TOKEN }} \
+            --auto-publish
+      - name: Check release notes
+        run: |
+          python3 tools/CompileReleaseNotes.py -vv -o release_notes.md \
+            --github-token ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload release notes
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: release_notes.md
+      # GitHub doesn't display artifacts until the workflow has completed, so we
+      # print the release notes here to be able to review them before approving
+      # a release
+      - name: Print release notes
+        run: |
+          cat release_notes.md

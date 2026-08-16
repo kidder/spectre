@@ -1,0 +1,36 @@
+# Distributed under the MIT License.
+# See LICENSE.txt for details.
+
+# Make sure no commits are prefixed with `fixup` or similar keywords. See
+# `tools/CheckCommits.sh` for details.
+name: Check Commits
+
+on: workflow_call
+
+jobs:
+  check_commits:
+    name: Commits
+    # Only run on pull requests since we don't check _all_ commits, but only
+    # those that came after the PR's base ref.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Check commits
+        # `CheckCommits.sh` tests against the local `develop` branch, so that's
+        # where we fetch the pull-request's base-branch to. Typically, it is
+        # the upstream `sxs-collaboration/spectre/develop` branch.
+        run: >
+          cd $GITHUB_WORKSPACE
+
+          git remote add upstream
+          https://github.com/${{ github.repository }}.git
+
+          git remote -v
+
+          git fetch upstream ${{ github.base_ref }}:develop
+
+          ./tools/CheckCommits.sh

@@ -1,0 +1,106 @@
+# Distributed under the MIT License.
+# See LICENSE.txt for details.
+
+name: Archs
+
+on: workflow_call
+
+jobs:
+  arch_datastructures_tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - gcc-10
+          - gcc-11
+          - clang-13
+          - clang-14
+        include:
+          - sde_arch: ("-nhm;nehalem" "-snb;sandybridge" "-hsw;haswell"
+              "-skl;skylake" "-icx;icelake-server")
+            compiler: gcc-10
+          - sde_arch: ("-nhm;nehalem" "-snb;sandybridge" "-hsw;haswell"
+              "-skl;skylake" "-icx;icelake-server")
+            compiler: gcc-11
+          - sde_arch: ("-nhm;nehalem" "-snb;sandybridge" "-hsw;haswell"
+              "-skl;skylake" "-icx;icelake-server")
+            compiler: clang-13
+          - sde_arch: ("-nhm;nehalem" "-snb;sandybridge" "-hsw;haswell"
+              "-skl;skylake" "-icx;icelake-server" "-tgl;tigerlake")
+            compiler: clang-14
+    container:
+      image: ${{ inputs.container || 'sxscollaboration/spectre:dev' }}
+      env:
+        # See the unit test job for the reasons for these configuration choices
+        CXXFLAGS: "-Werror"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      # Work around https://github.com/actions/checkout/issues/760
+      - name: Trust checkout
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+      - uses: ./.github/actions/parse-compiler
+        with:
+          compiler: ${{ matrix.compiler }}
+      - name: Install compiler
+        run: |
+          apt-get update -y
+          apt-get install --reinstall ca-certificates
+          if [[ $COMPILER_ID = gcc ]]; then
+            apt-get install -y $CC $CXX $FC
+          else
+            apt-get install -y $CC $FC
+          fi
+      - name: Install Intel SDE
+        working-directory: /work
+        run: |
+          wget -O sde-external.tar.xz https://ci-mirrors.rust-lang.org/sde-external-10.8.0-2026-03-15-lin.tar.xz
+          tar -xJf sde-external.tar.xz
+          mv sde-external-* sde
+          rm sde-*
+      - name: Configure, build, and run tests
+        working-directory: /work
+        # Notes on the build configuration:
+        # - We don't need debug symbols during CI, so we turn them off to reduce
+        #   memory usage.
+        run: >
+          ARCH_PARAM_LIST=${{ matrix.sde_arch }}
+
+          for ARCH_PARAM in ${ARCH_PARAM_LIST[@]}; do
+            OVERRIDE_ARCH=`echo ${ARCH_PARAM} | cut -d";" -f2`
+            SDE_FLAG=`echo ${ARCH_PARAM} | cut -d";" -f1`
+            echo "CMake arch flag: $OVERRIDE_ARCH"
+            echo "Intel SDE arch flag: $SDE_FLAG"
+            cd /work
+            BUILD_DIR=build$OVERRIDE_ARCH
+            mkdir $BUILD_DIR && cd $BUILD_DIR
+
+            cmake\
+            -D CMAKE_C_COMPILER=${CC}\
+            -D CMAKE_CXX_COMPILER=${CXX}\
+            -D CMAKE_Fortran_COMPILER=${FC}\
+            -D CMAKE_CXX_FLAGS="${CXXFLAGS}"\
+            -D OVERRIDE_ARCH=${OVERRIDE_ARCH}\
+            -D CHARM_ROOT=${CHARM_ROOT}\
+            -D CMAKE_BUILD_TYPE=Debug\
+            -D SPECTRE_DEBUG_Og=ON\
+            -D DEBUG_SYMBOLS=OFF\
+            -D STRIP_SYMBOLS=ON\
+            -D STUB_EXECUTABLE_OBJECT_FILES=ON\
+            -D STUB_LIBRARY_OBJECT_FILES=ON\
+            -D USE_PCH=ON\
+            -D USE_CCACHE=ON\
+            -D BUILD_DOCS=OFF\
+            -D SPECTRE_AUTODIFF=ON\
+            -D SPECTRE_FETCH_MISSING_DEPS=ON\
+            $GITHUB_WORKSPACE
+
+            make -j4 TestArchitectureVectorization
+
+            /work/sde/sde ${SDE_FLAG}\
+            -- ./bin/TestArchitectureVectorization [Unit]
+          done
+
+        shell: bash

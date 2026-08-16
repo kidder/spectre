@@ -1,0 +1,232 @@
+# Distributed under the MIT License.
+# See LICENSE.txt for details.
+
+# Build all test executables and run unit tests on macOS
+name: Unit tests on macOS
+
+on: workflow_call
+
+jobs:
+  unit_tests_macos:
+    timeout-minutes: 345
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-15-intel
+          - macos-15
+    runs-on: ${{ matrix.os }}
+    env:
+      # We install some low-level dependencies with Homebrew. They get picked up
+      # by `spack external find`.
+      SPECTRE_BREW_DEPS: >-  # Line breaks are spaces, no trailing newline
+        autoconf automake boost catch2 ccache cmake gsl hdf5 openblas yaml-cpp xsimd
+      # We install these packages with Spack and cache them. The full specs are
+      # listed below. This list is only needed to create the cache.
+      SPECTRE_SPACK_DEPS: blaze charmpp libxsmm
+      CCACHE_DIR: $HOME/ccache
+      CCACHE_TEMPDIR: $HOME/ccache-tmp
+      CCACHE_MAXSIZE: "2G"
+      CCACHE_COMPRESS: 1
+      CCACHE_COMPRESSLEVEL: 5
+      CCACHE_COMPILERCHECK: content
+      SPACK_SKIP_MODULES: true
+      SPACK_COLOR: always
+      NUM_CORES: ${{ matrix.NUM_CORES }}
+    steps:
+      - name: Record start time
+        id: start
+        run: |
+          echo "time=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Get CPU cores
+        id: get_cores
+        run: |
+          CORES=$(sysctl -n hw.ncpu)
+          echo "NUM_CORES=$CORES" >> $GITHUB_ENV
+          echo "Detect $CORES cores"
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install Homebrew dependencies
+        # uninstall cmake to avoid conflict between brew taps
+        run: |
+          brew uninstall cmake
+          brew install $SPECTRE_BREW_DEPS
+      # We install the remaining dependencies with Spack and cache them.
+      # See the `unit_tests` job above for details on the cache configuration.
+      - name: Restore dependency cache
+        uses: actions/cache/restore@v5
+        id: restore-dependencies
+        env:
+          CACHE_KEY_PREFIX: "dependencies-${{ matrix.os }}-${{ runner.arch }}"
+        with:
+          path: ~/dependencies
+          key: "${{ env.CACHE_KEY_PREFIX }}-${{ github.run_id }}"
+          restore-keys: |
+            ${{ env.CACHE_KEY_PREFIX }}-
+      - name: Install Spack
+        # Pin a specific version of Spack to avoid breaking CI builds when
+        # Spack changes.
+        run: |
+          cd $HOME
+          git clone -c feature.manyFiles=true \
+            https://github.com/spack/spack.git
+          cd spack
+          git checkout 7d1de58378fa210b7db887964fcc17187a504ad8
+      - name: Configure Spack
+        # - To avoid re-building packages that are already installed by Homebrew
+        #   we let Spack find them.
+        # - Add the dependency cache as binary mirror.
+        run: |
+          source $HOME/spack/share/spack/setup-env.sh
+          spack debug report
+          spack compiler find && spack compiler list
+          spack external find
+          spack config get packages
+          spack mirror add dependencies file://$HOME/dependencies/spack
+      # Install the remaining dependencies from source with Spack. We install
+      # them in an environment that we can activate later. After building the
+      # dependencies from source we cache them as compressed tarballs.
+      - name: Install Spack dependencies
+        run: |
+          source $HOME/spack/share/spack/setup-env.sh
+          spack env create spectre
+          spack env activate spectre
+          spack add blaze@3.8.2 ~blas ~lapack smp=none
+          # Support installing charm 7.0.0 with CMake 4.0
+          export CMAKE_POLICY_VERSION_MINIMUM=3.5
+          spack add charmpp@7.0.0 +shared backend=multicore build-target=charm++
+          # Use main branch until spack has 2.0 release
+          spack add libxsmm@main
+          spack concretize --reuse
+          spack install --no-check-signature
+          spack find -v
+      - name: Update dependency cache
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          source $HOME/spack/share/spack/setup-env.sh
+          # Clear existing buildcache so we don't accumulate old versions of
+          # packages in the cache
+          rm -rf $HOME/dependencies
+          spack buildcache create -uf dependencies $SPECTRE_SPACK_DEPS
+        # Allow the buildcache creation to fail without failing the job, since
+        # it sometimes runs out of memory
+        continue-on-error: true
+      - name: Save dependency cache
+        if: github.ref == 'refs/heads/develop'
+        uses: actions/cache/save@v5
+        with:
+          path: ~/dependencies
+          key: ${{ steps.restore-dependencies.outputs.cache-primary-key }}
+      # Install remaining pure Python dependencies with pip because the Spack
+      # package index can be incomplete (it can't mirror all of pip)
+      - name: Install Python dependencies
+        run: |
+          source $HOME/spack/share/spack/setup-env.sh
+          spack env activate spectre
+          pip install -r support/Python/requirements.txt
+      # Replace the ccache directory that building the dependencies may have
+      # generated with the cached ccache directory.
+      - name: Clear ccache from dependencies
+        run: |
+          ccache --clear
+          rm -rf $CCACHE_DIR
+          mkdir -p $CCACHE_DIR
+      - name: Restore ccache
+        uses: actions/cache/restore@v5
+        id: restore-ccache
+        env:
+          CACHE_KEY_PREFIX: "ccache-${{ matrix.os }}-${{ runner.arch }}"
+        with:
+          path: ~/ccache
+          key: "${{ env.CACHE_KEY_PREFIX }}-${{ github.run_id }}"
+          restore-keys: |
+            ${{ env.CACHE_KEY_PREFIX }}-
+      - name: Configure ccache
+        run: |
+          ccache -pz
+      - name: Clear ccache
+        # Clear ccache if requested
+        if: >
+          github.event_name == 'workflow_dispatch'
+            && github.event.inputs.clear_ccache == 'yes'
+        run: |
+          ccache -C
+      # Configure, build and run tests. See the `unit_tests` job above for
+      # details.
+      # - We increase the timeout for tests because the GitHub-hosted macOS VMs
+      #   appear to be quite slow.
+      - name: Configure build with cmake
+        run: |
+          source $HOME/spack/share/spack/setup-env.sh
+          spack env activate spectre
+          mkdir build && cd build
+          cmake \
+            -D CMAKE_C_COMPILER=clang \
+            -D CMAKE_CXX_COMPILER=clang++ \
+            -D CMAKE_Fortran_COMPILER=gfortran-14 \
+            -D CMAKE_CXX_FLAGS="-Werror" \
+            -D BUILD_SHARED_LIBS=ON \
+            -D BUILD_PYTHON_BINDINGS=ON \
+            -D MEMORY_ALLOCATOR=SYSTEM \
+            -D CHARM_ROOT=$(spack location --install-dir charmpp) \
+            -D BLAS_ROOT=$(brew --prefix openblas) \
+            -D LAPACK_ROOT=$(brew --prefix openblas) \
+            -D CMAKE_BUILD_TYPE=Debug \
+            -D SPECTRE_DEBUG_Og=ON \
+            -D DEBUG_SYMBOLS=OFF \
+            -D UNIT_TESTS_IN_TEST_EXECUTABLES=OFF \
+            -D STUB_EXECUTABLE_OBJECT_FILES=ON \
+            -D STUB_LIBRARY_OBJECT_FILES=ON \
+            -D USE_PCH=ON \
+            -D USE_CCACHE=ON \
+            -D SPECTRE_TEST_TIMEOUT_FACTOR=10 \
+            -D CMAKE_INSTALL_PREFIX=../install \
+            -D BUILD_DOCS=OFF \
+            -D CMAKE_OSX_SYSROOT=macosx \
+            $GITHUB_WORKSPACE
+      - name: Build unit tests
+        working-directory: build
+        run: |
+          make -j${NUM_CORES} unit-tests
+      - name: Build executables
+        working-directory: build
+        run: |
+          make test-executables
+      - name: Clean up ccache
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          now=$(date +%s)
+          job_duration=$((now - ${{ steps.start.outputs.time }}))
+          ccache --evict-older-than "${job_duration}s"
+      - name: Save ccache
+        if: always() && github.ref == 'refs/heads/develop'
+        uses: actions/cache/save@v5
+        with:
+          path: ~/ccache
+          key: ${{ steps.restore-ccache.outputs.cache-primary-key }}
+      - name: Print size of build directory
+        working-directory: build
+        run: |
+          ls | xargs du -sh
+          du -sh .
+      - name: Diagnose ccache
+        run: |
+          ccache -s
+      - name: Run unit tests
+        working-directory: build
+        run: |
+          ctest -E TestingFramework.Abort -j${NUM_CORES} \
+            --repeat after-timeout:3 --output-on-failure
+      - name: Install
+        working-directory: build
+        run: |
+          make install
+      - name: Print size of install directory
+        working-directory: install
+        run: |
+          ls | xargs du -sh
+          du -sh .
+          rm -r ./*

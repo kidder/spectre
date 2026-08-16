@@ -1,0 +1,24 @@
+# Distributed under the MIT License.
+# See LICENSE.txt for details.
+
+# Deploy to gh-pages on pushes to develop
+# See docs: https://github.com/actions/deploy-pages
+name: Deploy documentation
+
+on: workflow_call
+
+jobs:
+  docs-deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v5
+        id: deploy
+        with:
+          artifact_name: docs-html
