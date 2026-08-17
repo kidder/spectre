@@ -5,6 +5,14 @@
 # configurations.
 name: Unit tests
 
+# Set any defaults for the runs below.
+# - use bash as the default shell since this is almost certainly what
+#   is always expected. We use regular expressions in a few places
+#   that rely on bash.
+defaults:
+  run:
+    shell: bash
+
 on: workflow_call
 
 jobs:
@@ -189,20 +197,33 @@ jobs:
       - name: Trust checkout
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
-      - uses: ./.github/actions/parse-compiler
+      - id: parse_compiler
+        uses: ./.github/actions/parse-compiler
         with:
           compiler: ${{ matrix.compiler }}
       # Install the selected compiler. We don't bundle all of them in the
       # container because they take up a lot of space.
       - name: Install compiler
+        env:
+          COMPILER_ID: ${{ steps.parse_compiler.outputs.compiler_id }}
+          COMPILER_VERSION: ${{ steps.parse_compiler.outputs.compiler_version }}
+          CC: ${{ steps.parse_compiler.outputs.c_compiler }}
+          CXX: ${{ steps.parse_compiler.outputs.cxx_compiler }}
+          FC: ${{ steps.parse_compiler.outputs.fortran_compiler }}
         run: |
+          echo "compiler id: $COMPILER_ID"
+          echo "Add repository"
           add-apt-repository ppa:ubuntu-toolchain-r/test
+          echo "update"
           apt-get update -y
-          if [[ $COMPILER_ID = gcc ]]; then
+          if [[ "$COMPILER_ID" = "gcc" ]]; then
+            echo "install gcc"
             apt-get install -y $CC $CXX $FC
-          elif [[ $COMPILER_ID = clang ]]; then
+          elif [[ "$COMPILER_ID" = "clang" ]]; then
+            echo "install clang"
             apt-get install -y $CC $FC
-          elif [[ $COMPILER_ID = nvcc ]]; then
+          elif [[ "$COMPILER_ID" = "nvcc" ]]; then
+            echo "install nvcc"
             # Install CUDA
             wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
             dpkg -i cuda-keyring_1.1-1_all.deb
@@ -213,6 +234,8 @@ jobs:
           fi
       - name: Install Kokkos
         if: matrix.KOKKOS == 'ON'
+        env:
+          COMPILER_ID: ${{ steps.parse_compiler.outputs.compiler_id }}
         working-directory: /work
         run: |
           KOKKOS_VERSION=4.4.00
@@ -231,10 +254,6 @@ jobs:
             -D CMAKE_POSITION_INDEPENDENT_CODE=ON
           make -j ${NUMBER_OF_CORES} install
           cd ../../ && rm -rf kokkos.tar.gz kokkos
-          # Use Kokkos compiler wrapper for nvcc
-          if [[ $COMPILER_ID = nvcc ]]; then
-            echo "CXX=/usr/local/bin/nvcc_wrapper" >> $GITHUB_ENV
-          fi
       # Install specific CMake version if requested
       - name: Install CMake version
         if: matrix.CMAKE_VERSION
@@ -314,6 +333,10 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
         run: |
           ccache -C
       - name: Configure build with cmake
+        env:
+          CC: ${{ steps.parse_compiler.outputs.c_compiler }}
+          CXX: ${{ steps.parse_compiler.outputs.cxx_compiler }}
+          FC: ${{ steps.parse_compiler.outputs.fortran_compiler }}
         # Notes on the build configuration:
         # - We don't need debug symbols during CI, so we turn them off to reduce
         #   memory usage.
@@ -519,6 +542,10 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
           du -sh .
           rm -r ./*
       - name: Test formaline tar can be built
+        env:
+          CC: ${{ steps.parse_compiler.outputs.c_compiler }}
+          CXX: ${{ steps.parse_compiler.outputs.cxx_compiler }}
+          FC: ${{ steps.parse_compiler.outputs.fortran_compiler }}
         # - We only run the formaline tests in debug mode to reduce total build
         #   time in CI. We don't run them with ASAN because then we run out of
         #   disk space.

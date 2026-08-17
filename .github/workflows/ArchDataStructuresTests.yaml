@@ -3,6 +3,14 @@
 
 name: Archs
 
+# Set any defaults for the runs below.
+# - use bash as the default shell since this is almost certainly what
+#   is always expected. We use regular expressions in a few places
+#   that rely on bash.
+defaults:
+  run:
+    shell: bash
+
 on: workflow_call
 
 jobs:
@@ -41,14 +49,20 @@ jobs:
       - name: Trust checkout
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
-      - uses: ./.github/actions/parse-compiler
+      - id: parse_compiler
+        uses: ./.github/actions/parse-compiler
         with:
           compiler: ${{ matrix.compiler }}
       - name: Install compiler
+        env:
+          COMPILER_ID: ${{ steps.parse_compiler.outputs.compiler_id }}
+          CC: ${{ steps.parse_compiler.outputs.c_compiler }}
+          CXX: ${{ steps.parse_compiler.outputs.cxx_compiler }}
+          FC: ${{ steps.parse_compiler.outputs.fortran_compiler }}
         run: |
           apt-get update -y
           apt-get install --reinstall ca-certificates
-          if [[ $COMPILER_ID = gcc ]]; then
+          if [[ "$COMPILER_ID" = "gcc" ]]; then
             apt-get install -y $CC $CXX $FC
           else
             apt-get install -y $CC $FC
@@ -61,6 +75,10 @@ jobs:
           mv sde-external-* sde
           rm sde-*
       - name: Configure, build, and run tests
+        env:
+          CC: ${{ steps.parse_compiler.outputs.c_compiler }}
+          CXX: ${{ steps.parse_compiler.outputs.cxx_compiler }}
+          FC: ${{ steps.parse_compiler.outputs.fortran_compiler }}
         working-directory: /work
         # Notes on the build configuration:
         # - We don't need debug symbols during CI, so we turn them off to reduce
@@ -103,4 +121,3 @@ jobs:
             -- ./bin/TestArchitectureVectorization [Unit]
           done
 
-        shell: bash
