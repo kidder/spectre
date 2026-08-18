@@ -4,7 +4,6 @@
 find_package(BLAS REQUIRED)
 
 message(STATUS "BLAS libs: " ${BLAS_LIBRARIES})
-message(STATUS "BLAS include dirs: " ${BLAS_INCLUDE_DIRS})
 
 set(IS_OPENBLAS FALSE)
 
@@ -45,21 +44,28 @@ set_property(
 # https://github.com/xianyi/OpenBLAS/wiki/Faq#multi-threaded
 # We use `execute_process` instead of `try_compile` to avoid potentially slow
 # disk IO.
+# set(
+#   CHECK_DISABLE_OPENBLAS_MULTITHREADING_SOURCE
+#   "extern \"C\" { void openblas_set_num_threads(int); }\n\
+# int main() { openblas_set_num_threads(1); }"
+#   )
 set(
-  CHECK_DISABLE_OPENBLAS_MULTITHREADING_SOURCE
-  "extern \"C\" { void openblas_set_num_threads(int); }\n\
-int main() { openblas_set_num_threads(1); }"
-  )
+  CHECK_DISABLE_OPENBLAS_MULTITHREADING_SOURCE [[
+#include <cblas.h>
+int main() {
+  openblas_set_num_threads(1);
+}
+]])
 string(REPLACE ";" " " BLAS_LIBRARIES_JOINED_WITH_SPACES "${BLAS_LIBRARIES}")
 execute_process(
   COMMAND
   bash -c
   "${CMAKE_CXX_COMPILER} ${BLAS_LIBRARIES_JOINED_WITH_SPACES} -x c++ - <<< $'\
-${CHECK_DISABLE_OPENBLAS_MULTITHREADING_SOURCE}' -o /dev/null"
+${CHECK_DISABLE_OPENBLAS_MULTITHREADING_SOURCE}' -lopenblas -o /dev/null"
   RESULT_VARIABLE CHECK_DISABLE_OPENBLAS_MULTITHREADING_RESULT
   OUTPUT_VARIABLE CHECK_DISABLE_OPENBLAS_MULTITHREADING_OUTPUT
   ERROR_VARIABLE CHECK_DISABLE_OPENBLAS_MULTITHREADING_ERROR
-  COMMAND_ECHO_STDOUT
+  COMMAND_ECHO STDOUT
   )
 if(${CHECK_DISABLE_OPENBLAS_MULTITHREADING_RESULT} EQUAL 0)
   set(DISABLE_OPENBLAS_MULTITHREADING ON)
