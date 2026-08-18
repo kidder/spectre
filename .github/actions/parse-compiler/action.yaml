@@ -13,10 +13,28 @@ inputs:
     description: Compiler to parse, e.g. 'gcc-10'
     required: true
 
+outputs:
+  c_compiler:
+    description: "The C compiler"
+    value: ${{ steps.generate-output.outputs.cc }}
+  cxx_compiler:
+    description: "The CXX compiler"
+    value: ${{ steps.generate-output.outputs.cxx }}
+  fortran_compiler:
+    description: "The Fortran compiler"
+    value: ${{ steps.generate-output.outputs.fc }}
+  compiler_id:
+    description: "The compiler id"
+    value: ${{ steps.generate-output.outputs.id }}
+  compiler_version:
+    description: "The C compiler version"
+    value: ${{ steps.generate-output.outputs.version }}
+
 runs:
   using: "composite"
   steps:
-    - run: |
+    - id: generate-output
+      run: |
         if [[ ${{ inputs.compiler }} =~ (gcc|clang|nvcc)-([0-9\.\-]+) ]]; then
           COMPILER_ID=${BASH_REMATCH[1]}
           COMPILER_VERSION=${BASH_REMATCH[2]}
@@ -31,13 +49,13 @@ runs:
           elif [[ $COMPILER_ID = nvcc ]]; then
             # Set host compilers
             CC=gcc;
-            CXX=g++;
+            CXX=/usr/local/bin/nvcc_wrapper;
             FC=gfortran-11;
           fi
         fi
-        echo "CC=$CC" >> $GITHUB_ENV
-        echo "CXX=$CXX" >> $GITHUB_ENV
-        echo "FC=$FC" >> $GITHUB_ENV
-        echo "COMPILER_ID=$COMPILER_ID" >> $GITHUB_ENV
-        echo "COMPILER_VERSION=$COMPILER_VERSION" >> $GITHUB_ENV
+        echo "cc=$CC" >> $GITHUB_OUTPUT
+        echo "cxx=$CXX" >> $GITHUB_OUTPUT
+        echo "fc=$FC" >> $GITHUB_OUTPUT
+        echo "id=$COMPILER_ID" >> $GITHUB_OUTPUT
+        echo "version=$COMPILER_VERSION" >> $GITHUB_OUTPUT
       shell: bash

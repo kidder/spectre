@@ -592,20 +592,27 @@ jobs:
       - name: Trust checkout
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
-      - uses: ./.github/actions/parse-compiler
+      - id: parse_compiler
+        uses: ./.github/actions/parse-compiler
         with:
           compiler: ${{ matrix.compiler }}
       # Install the selected compiler. We don't bundle all of them in the
       # container because they take up a lot of space.
       - name: Install compiler
+        env:
+          COMPILER_ID: ${{ steps.parse_compiler.outputs.compiler_id }}
+          COMPILER_VERSION: ${{ steps.parse_compiler.outputs.compiler_version }}
+          CC: ${{ steps.parse_compiler.outputs.c_compiler }}
+          CXX: ${{ steps.parse_compiler.outputs.cxx_compiler }}
+          FC: ${{ steps.parse_compiler.outputs.fortran_compiler }}
         run: |
           add-apt-repository ppa:ubuntu-toolchain-r/test
           apt-get update -y
-          if [[ $COMPILER_ID = gcc ]]; then
+          if [[ "$COMPILER_ID" = "gcc" ]]; then
             apt-get install -y $CC $CXX $FC
-          elif [[ $COMPILER_ID = clang ]]; then
+          elif [[ "$COMPILER_ID" = "clang" ]]; then
             apt-get install -y $CC $FC
-          elif [[ $COMPILER_ID = nvcc ]]; then
+          elif [[ "$COMPILER_ID" = "nvcc" ]]; then
             # Install CUDA
             wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
             dpkg -i cuda-keyring_1.1-1_all.deb
@@ -634,10 +641,6 @@ jobs:
             -D CMAKE_POSITION_INDEPENDENT_CODE=ON
           make -j ${NUMBER_OF_CORES} install
           cd ../../ && rm -rf kokkos.tar.gz kokkos
-          # Use Kokkos compiler wrapper for nvcc
-          if [[ $COMPILER_ID = nvcc ]]; then
-            echo "CXX=/usr/local/bin/nvcc_wrapper" >> $GITHUB_ENV
-          fi
       # Install specific CMake version if requested
       - name: Install CMake version
         if: matrix.CMAKE_VERSION
@@ -718,6 +721,10 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
         run: |
           ccache -C
       - name: Configure build with cmake
+        env:
+          CC: ${{ steps.parse_compiler.outputs.c_compiler }}
+          CXX: ${{ steps.parse_compiler.outputs.cxx_compiler }}
+          FC: ${{ steps.parse_compiler.outputs.fortran_compiler }}
         # Notes on the build configuration:
         # - We don't need debug symbols during CI, so we turn them off to reduce
         #   memory usage.
@@ -923,6 +930,10 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
           du -sh .
           rm -r ./*
       - name: Test formaline tar can be built
+        env:
+          CC: ${{ steps.parse_compiler.outputs.c_compiler }}
+          CXX: ${{ steps.parse_compiler.outputs.cxx_compiler }}
+          FC: ${{ steps.parse_compiler.outputs.fortran_compiler }}
         # - We only run the formaline tests in debug mode to reduce total build
         #   time in CI. We don't run them with ASAN because then we run out of
         #   disk space.
@@ -1409,14 +1420,20 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
       - name: Trust checkout
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
-      - uses: ./.github/actions/parse-compiler
+      - id: parse_compiler
+        uses: ./.github/actions/parse-compiler
         with:
           compiler: ${{ matrix.compiler }}
       - name: Install compiler
+        env:
+          COMPILER_ID: ${{ steps.parse_compiler.outputs.compiler_id }}
+          CC: ${{ steps.parse_compiler.outputs.c_compiler }}
+          CXX: ${{ steps.parse_compiler.outputs.cxx_compiler }}
+          FC: ${{ steps.parse_compiler.outputs.fortran_compiler }}
         run: |
           apt-get update -y
           apt-get install --reinstall ca-certificates
-          if [[ $COMPILER_ID = gcc ]]; then
+          if [[ "$COMPILER_ID" = "gcc" ]]; then
             apt-get install -y $CC $CXX $FC
           else
             apt-get install -y $CC $FC
@@ -1429,6 +1446,10 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
           mv sde-external-* sde
           rm sde-*
       - name: Configure, build, and run tests
+        env:
+          CC: ${{ steps.parse_compiler.outputs.c_compiler }}
+          CXX: ${{ steps.parse_compiler.outputs.cxx_compiler }}
+          FC: ${{ steps.parse_compiler.outputs.fortran_compiler }}
         working-directory: /work
         # Notes on the build configuration:
         # - We don't need debug symbols during CI, so we turn them off to reduce
