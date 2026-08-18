@@ -273,11 +273,13 @@ void test_predictor_inverse_temporal_matrix() {
         const Matrix& result = ader::dg::predictor_inverse_temporal_matrix<
             Spectral::Basis::Legendre, Spectral::Quadrature::GaussLobatto>(
             num_points);
+        CAPTURE(num_points);
+        CAPTURE(result.size());
         Approx custom_approx = Approx::custom().epsilon(1e-10);
         for (size_t i = 0; i < num_points; ++i) {
           for (size_t j = 0; j < num_points; ++j) {
-            CHECK(expected_matrices[num_points - 2](i, j) ==
-                  custom_approx(result(i, j)));
+            REQUIRE(expected_matrices[num_points - 2](i, j) ==
+                    custom_approx(result(i, j)));
           }
         }
       };

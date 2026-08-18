@@ -112,7 +112,7 @@ static const Approx approx =                                    // NOLINT
 template <typename T, typename = std::nullptr_t>
 struct check_iterable_approx {
   static void apply(const T& a, const T& b, const Approx& appx = approx) {
-    CHECK(a == appx(b));
+    REQUIRE(a == appx(b));
   }
 };
 

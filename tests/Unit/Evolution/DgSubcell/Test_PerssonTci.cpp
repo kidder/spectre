@@ -105,7 +105,7 @@ void test_persson_impl(
     }
   }
 
-  CHECK(evolution::dg::subcell::persson_tci(
+  REQUIRE(evolution::dg::subcell::persson_tci(
             get<TagToCheck>(vars), dg_mesh, persson_exponent,
             persson_number_of_highest_modes) == expected_tci_triggered);
 }
