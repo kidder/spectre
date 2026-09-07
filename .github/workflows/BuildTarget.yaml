@@ -1,0 +1,268 @@
+# Distributed under the MIT License.
+# See LICENSE.txt for details.
+
+name: Build target
+
+# Set any defaults for the runs below.
+# - use bash as the default shell since this is almost certainly what
+#   is always expected. We use regular expressions in a few places
+#   that rely on bash.
+defaults:
+  run:
+    shell: bash
+
+on: workflow_call
+
+jobs:
+  libs:
+    name: Build libs
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    strategy:
+      fail-fast: false
+      matrix:
+        gcc_version: [10, 11, 12, 13, 14, 15]
+        build_type: [Debug]
+        SPECTRE_DEBUG_Og: [ON]
+        ENABLE_OPENMP: [ON]
+        BUILD_SHARED_LIBS: [ON]
+    container:
+      image: ${{ inputs.container || 'sxscollaboration/spectre:dev' }}
+      volumes:
+        - /usr/local:/mnt/host-usr-local
+        - /usr/share:/mnt/host-usr-share
+        - /opt:/mnt/host-opt
+      env:
+        # We make sure to use a fixed absolute path for the ccache directory
+        CCACHE_DIR: /work/ccache
+        # Use a separate temp directory to conserve cache space on GitHub
+        CCACHE_TEMPDIR: /work/ccache-tmp
+        # Control the max cache size. We evict unused entries in a step below to
+        # make sure that each build only uses what it need of this max size.
+        CCACHE_MAXSIZE: "2G"
+        # Control the compression level. The ccache docs recommend at most level
+        # 5 to avoid slowing down compilation.
+        CCACHE_COMPRESS: 1
+        CCACHE_COMPRESSLEVEL: 5
+        # We hash the content of the compiler rather than the location and mtime
+        # to make sure the cache works across the different machines
+        CCACHE_COMPILERCHECK: content
+        # Rewrite absolute paths starting with this base dir to relative paths
+        # before hashing. This is needed to reuse the cache for the formaline
+        # test below, which builds in a different directory.
+        CCACHE_BASEDIR: $GITHUB_WORKSPACE
+        NUM_CORES: ${{ matrix.NUM_CORES }}
+      options: --privileged
+    steps:
+      - name: Free host disk space
+        run: |
+          df -h /
+          rm -rf /mnt/host-usr-local/lib/android \
+                 /mnt/host-usr-local/.ghcup \
+                 /mnt/host-usr-local/julia* \
+                 /mnt/host-opt/hostedtoolcache \
+                 /mnt/host-usr-share/dotnet \
+                 /mnt/host-usr-share/swift \
+                 /mnt/host-usr-share/miniconda \
+                 /mnt/host-opt/microsoft /mnt/host-opt/google || true
+          df -h /
+      - name: Record start time
+        id: start
+        run: |
+          echo "time=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Get CPU cores
+        id: get_cores
+        run: |
+          CORES=$(nproc)
+          echo "NUM_CORES=$CORES" >> $GITHUB_ENV
+          echo "Detect $CORES cores"
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      # Work around https://github.com/actions/checkout/issues/760
+      - name: Trust checkout
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+      - name: Install compiler
+        run: |
+          add-apt-repository ppa:ubuntu-toolchain-r/test
+          apt-get update -y
+          apt-get install -y gcc-${{ matrix.gcc_version }} \
+            g++-${{ matrix.gcc_version }} gfortran-${{ matrix.gcc_version }}
+      - name: Install Python dependencies
+        if: matrix.PYTHON_VERSION
+        run: |
+          python3 -m pip install \
+            -r support/Python/requirements.txt \
+            -r support/Python/dev_requirements.txt
+          python3 -m pip list -v
+      # Assign a unique cache key for every run.
+      # - We will save the cache using this unique key, but only on the develop
+      #   branch. This way we regularly update the cache without filling up the
+      #   storage space with caches from other branches.
+      # - To restore the most recent cache we provide a partially-matched
+      #   "restore key".
+      - name: Restore ccache
+        uses: actions/cache/restore@v5
+        id: restore-ccache
+        env:
+          CACHE_KEY_PREFIX: "ccache-gcc-${{ matrix.gcc_version }}-\
+${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
+        with:
+          path: /work/ccache
+          key: "${{ env.CACHE_KEY_PREFIX }}-${{ github.run_id }}"
+          restore-keys: |
+            ${{ env.CACHE_KEY_PREFIX }}-
+      - name: Configure ccache
+        # Print the ccache configuration and reset statistics
+        run: |
+          ccache -pz
+      - name: Clear ccache
+        # Clear ccache if requested
+        if: >
+          github.event_name == 'workflow_dispatch'
+            && github.event.inputs.clear_ccache == 'yes'
+        run: |
+          ccache -C
+      - name: Configure build with cmake
+        # Notes on the build configuration:
+        # - We don't need debug symbols during CI, so we turn them off to reduce
+        #   memory usage.
+        # - We run unit tests with the following compiler flags:
+        #   -Werror: Treat warnings as error.
+        #   -march=x86-64: Make sure we are building on a consistent
+        #   architecture so caching works. This is necessary because GitHub may
+        #   run the job on different hardware.
+        run: >
+          mkdir build && cd build
+
+          ENABLE_WARNINGS=${{ matrix.ENABLE_WARNINGS }}
+          WERROR="${{ matrix.WERROR != 'OFF' && '-Werror' || '' }}"
+          CXX_FLAGS="${WERROR} ${{ matrix.EXTRA_CXX_FLAGS }}"
+          BUILD_PYTHON_BINDINGS=${{ matrix.BUILD_PYTHON_BINDINGS }}
+          BUILD_SHARED_LIBS=${{ matrix.BUILD_SHARED_LIBS }}
+          KOKKOS=${{ matrix.KOKKOS }}
+          MATRIX_CHARM_ROOT=${{ matrix.CHARM_ROOT }}
+          ASAN=${{ matrix.ASAN }}
+          MEMORY_ALLOCATOR=${{ matrix.MEMORY_ALLOCATOR }}
+          UBSAN_UNDEFINED=${{ matrix.UBSAN_UNDEFINED }}
+          UBSAN_INTEGER=${{ matrix.UBSAN_INTEGER }}
+          USE_PCH=${{ matrix.use_pch }}
+          USE_XSIMD=${{ matrix.use_xsimd }}
+          COVERAGE=${{ matrix.COVERAGE }}
+          TEST_TIMEOUT_FACTOR=${{ matrix.TEST_TIMEOUT_FACTOR }}
+          INPUT_FILE_MIN_PRIO=${{ matrix.input_file_tests_min_priority }}
+          SPECTRE_AUTODIFF=${{ matrix.SPECTRE_AUTODIFF }}
+
+          cmake --version
+
+          cmake
+          -D CMAKE_C_COMPILER=gcc-${{ matrix.gcc_version }}
+          -D CMAKE_CXX_COMPILER=g++-${{ matrix.gcc_version }}
+          -D CMAKE_Fortran_COMPILER=gfortran-${{ matrix.gcc_version }}
+          -D CMAKE_CXX_FLAGS="${CXX_FLAGS}"
+          -D OVERRIDE_ARCH=x86-64
+          -D ENABLE_WARNINGS=${ENABLE_WARNINGS:-'ON'}
+          -D CHARM_ROOT=${MATRIX_CHARM_ROOT:-$CHARM_ROOT}
+          -D CMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -D SPECTRE_DEBUG_Og=${{ matrix.SPECTRE_DEBUG_Og }}
+          -D DEBUG_SYMBOLS=OFF
+          -D BACKTRACE_LIB=/usr/local/lib/libbacktrace.a
+          -D BACKTRACE_HEADER_DIR=/usr/local/include
+          -D UNIT_TESTS_IN_TEST_EXECUTABLES=OFF
+          -D SPECTRE_INPUT_FILE_TEST_MIN_PRIORITY=${INPUT_FILE_MIN_PRIO:-'high'}
+          -D STRIP_SYMBOLS=ON
+          -D STUB_EXECUTABLE_OBJECT_FILES=ON
+          -D STUB_LIBRARY_OBJECT_FILES=ON
+          -D USE_PCH=${USE_PCH:-'ON'}
+          -D USE_XSIMD=${USE_XSIMD:-'ON'}
+          -D USE_CCACHE=ON
+          -D ENABLE_OPENMP=${{ matrix.ENABLE_OPENMP }}
+          -D SPECTRE_KOKKOS=${KOKKOS:-'OFF'}
+          -D COVERAGE=${COVERAGE:-'OFF'}
+          -D BUILD_PYTHON_BINDINGS=${BUILD_PYTHON_BINDINGS:-'ON'}
+          -D BUILD_SHARED_LIBS=${BUILD_SHARED_LIBS:-'ON'}
+          -D ASAN=${ASAN:-'OFF'}
+          -D UBSAN_UNDEFINED=${UBSAN_UNDEFINED:-'OFF'}
+          -D UBSAN_INTEGER=${UBSAN_INTEGER:-'OFF'}
+          -D MEMORY_ALLOCATOR=${MEMORY_ALLOCATOR:-'SYSTEM'}
+          -D SPECTRE_UNIT_TEST_TIMEOUT_FACTOR=${TEST_TIMEOUT_FACTOR:-'1'}
+          -D SPECTRE_INPUT_FILE_TEST_TIMEOUT_FACTOR=${TEST_TIMEOUT_FACTOR:-'1'}
+          -D SPECTRE_PYTHON_TEST_TIMEOUT_FACTOR=${TEST_TIMEOUT_FACTOR:-'1'}
+          -D CMAKE_INSTALL_PREFIX=/work/spectre_install
+          -D BUILD_DOCS=OFF
+          -D SPECTRE_AUTODIFF=${SPECTRE_AUTODIFF:-'ON'}
+          -D SPECTRE_FETCH_MISSING_DEPS=ON
+          --warn-uninitialized
+          $GITHUB_WORKSPACE 2>&1 | tee CMakeOutput.txt 2>&1
+      - name: Check for CMake warnings
+        working-directory: build
+        run: |
+          ! grep -A 6 "CMake Warning" ./CMakeOutput.txt
+      - name: Build unit tests
+        if: matrix.unit_tests != 'OFF'
+        working-directory: build
+        run: |
+          make -j${NUM_CORES} unit-tests
+      - name: Run unit tests
+        if: matrix.unit_tests != 'OFF' && matrix.COVERAGE != 'ON'
+        working-directory: build
+        run: |
+          # We get occasional random timeouts, repeat tests to see if
+          # it is a random timeout or systematic.
+          #
+          # We run ctest -L unit before build test-executables to make
+          # sure that all the unit tests are actually built by the
+          # unit-tests target.
+          ctest -j${NUM_CORES} -L unit \
+              --output-on-failure --repeat after-timeout:3
+      # Avoid running out of disk space by cleaning up the build directory
+      - name: Clean up unit tests
+        working-directory: build
+        run: |
+          pwd
+          ls | xargs du -sh
+          du -sh .
+          rm -f bin/Test_*
+          du -sh .
+      # Build the executables in a single thread to reduce memory usage
+      # sufficiently so they compile on the GitHub-hosted runners
+      - name: Build executables
+        if: matrix.COVERAGE != 'ON' && matrix.test_executables != 'OFF'
+        working-directory: build
+        run: |
+          make -j1 test-executables
+      # Delete unused cache entries before uploading the cache
+      - name: Clean up ccache
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          now=$(date +%s)
+          job_duration=$((now - ${{ steps.start.outputs.time }}))
+          ccache --evict-older-than "${job_duration}s"
+      # Save the cache after everything has been built. Also save on failure or
+      # on cancellation (`always()`) because a partial cache is better than no
+      # cache.
+      - name: Save ccache
+        if: always() && github.ref == 'refs/heads/develop'
+        uses: actions/cache/save@v5
+        with:
+          path: /work/ccache
+          key: ${{ steps.restore-ccache.outputs.cache-primary-key }}
+      - name: Print size of build directory
+        working-directory: build
+        run: |
+          pwd
+          ls | xargs du -sh
+          du -sh .
+      - name: Diagnose ccache
+        run: |
+          ccache -s
+      - name: Run non-unit tests
+        if: matrix.COVERAGE != 'ON' && matrix.test_executables != 'OFF'
+        working-directory: build
+        run: |
+          # We get occasional random timeouts, repeat tests to see if
+          # it is a random timeout or systematic
+          #
+          # Only use 2 cores because these tests run more slowly.
+          ctest -j2 -LE unit --output-on-failure \
+                --repeat after-timeout:3
