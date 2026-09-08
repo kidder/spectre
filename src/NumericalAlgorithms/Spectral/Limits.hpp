@@ -61,6 +61,8 @@ constexpr size_t max(const Basis basis, const Quadrature quadrature) {
   } else if (basis == Basis::ZernikeB2 and
              quadrature == Quadrature::GaussRadauUpper) {
     return max_fourier_mode / 2 + 1;
+  } else if (basis == Basis::HalfFourier) {
+    return max_fourier_mode + 1;
   } else if (quadrature == Quadrature::Equiangular) {
     return 2 * max_fourier_mode + 1;
   }
