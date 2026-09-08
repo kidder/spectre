@@ -43,7 +43,7 @@ size_t random_extent(const gsl::not_null<std::mt19937*> generator,
     return max;
   }
   std::uniform_int_distribution<size_t> distrib(min, max);
-  if (quadrature == Quadrature::Equiangular) {
+  if (quadrature == Quadrature::Equiangular and basis == Basis::Fourier) {
     const size_t result = distrib(*generator);
     return result % 2 == 0 ? result + 1 : result;
   }
@@ -116,10 +116,10 @@ void test_2d(const gsl::not_null<std::mt19937*> generator) {
     }
   }
 
-  CHECK(valid_basis_and_quadratures.size() == 27);
+  REQUIRE(valid_basis_and_quadratures.size() == 27);
 
   std::vector<std::array<Basis, 2>> bases;
-  bases.reserve(81);
+  bases.reserve(100);
   for (const auto xi_basis : all_bases()) {
     if (xi_basis == Basis::Uninitialized) {
       continue;
@@ -131,7 +131,7 @@ void test_2d(const gsl::not_null<std::mt19937*> generator) {
       bases.emplace_back(std::array{xi_basis, eta_basis});
     }
   }
-  CHECK(bases.size() == 81);
+  REQUIRE(bases.size() == 100);
 
   std::vector<std::array<Quadrature, 2>> quadratures;
   quadratures.reserve(81);
@@ -146,7 +146,7 @@ void test_2d(const gsl::not_null<std::mt19937*> generator) {
       quadratures.emplace_back(std::array{xi_quadrature, eta_quadrature});
     }
   }
-  CHECK(quadratures.size() == 81);
+  REQUIRE(quadratures.size() == 81);
 
   for (const auto basis : bases) {
     CAPTURE(basis);
@@ -193,13 +193,17 @@ void test_2d(const gsl::not_null<std::mt19937*> generator) {
 void test_3d(const gsl::not_null<std::mt19937*> generator) {
   std::vector<std::pair<std::array<Basis, 3>, std::array<Quadrature, 3>>>
       valid_basis_and_quadratures;
-  valid_basis_and_quadratures.reserve(159);
+  valid_basis_and_quadratures.reserve(164);
   valid_basis_and_quadratures.emplace_back(bases::hypertorus<3>,
                                            quadratures::hypertorus<3>);
   valid_basis_and_quadratures.emplace_back(bases::full_sphere,
                                            quadratures::full_sphere);
   valid_basis_and_quadratures.emplace_back(bases::cartoon_sphere_inner,
                                            quadratures::cartoon_sphere_inner);
+  valid_basis_and_quadratures.emplace_back(
+      std::array{Basis::ZernikeB1, Basis::HalfFourier, Basis::Cartoon},
+      std::array{Quadrature::GaussRadauUpper, Quadrature::Equiangular,
+                 Quadrature::AxialSymmetry});
   for (const auto i1_basis : i1_bases) {
     for (const auto i1_quadrature : i1_quadratures) {
       for (const auto another_i1_basis : i1_bases) {
@@ -259,10 +263,14 @@ void test_3d(const gsl::not_null<std::mt19937*> generator) {
           std::array{Basis::ZernikeB1, i1_basis, Basis::Cartoon},
           std::array{Quadrature::GaussRadauUpper, i1_quadrature,
                      Quadrature::AxialSymmetry});
+      valid_basis_and_quadratures.emplace_back(
+          std::array{i1_basis, Basis::HalfFourier, Basis::Cartoon},
+          std::array{i1_quadrature, Quadrature::Equiangular,
+                     Quadrature::AxialSymmetry});
     }
   }
 
-  CHECK(valid_basis_and_quadratures.size() == 159);
+  REQUIRE(valid_basis_and_quadratures.size() == 164);
 
   std::vector<std::array<Basis, 3>> bases;
   bases.reserve(729);
@@ -282,7 +290,7 @@ void test_3d(const gsl::not_null<std::mt19937*> generator) {
       }
     }
   }
-  CHECK(bases.size() == 729);
+  REQUIRE(bases.size() == 1000);
 
   std::vector<std::array<Quadrature, 3>> quadratures;
   quadratures.reserve(729);
@@ -303,7 +311,7 @@ void test_3d(const gsl::not_null<std::mt19937*> generator) {
       }
     }
   }
-  CHECK(quadratures.size() == 729);
+  REQUIRE(quadratures.size() == 729);
 
   for (const auto basis : bases) {
     CAPTURE(basis);

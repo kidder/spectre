@@ -100,7 +100,8 @@ bool is_valid_dg_mesh(const Mesh<Dim>& mesh) {
         if constexpr (Dim == 3) {
           if (d == 0 and quadrature == Quadrature::GaussRadauUpper and
               (bases[1] == Basis::Legendre or bases[1] == Basis::Cartoon or
-               bases[1] == Basis::Chebyshev) and
+               bases[1] == Basis::Chebyshev or
+               bases[1] == Basis::HalfFourier) and
               bases[2] == Basis::Cartoon) {
             break;
           } else {
@@ -196,12 +197,27 @@ bool is_valid_dg_mesh(const Mesh<Dim>& mesh) {
                 ((bases[0] == Basis::Legendre or bases[0] == Basis::ZernikeB1 or
                   bases[0] == Basis::Chebyshev) and
                  (bases[1] == Basis::Legendre or bases[1] == Basis::ZernikeB1 or
-                  bases[1] == Basis::Chebyshev) and
+                  bases[1] == Basis::Chebyshev or
+                  bases[1] == Basis::HalfFourier) and
                  quadrature == Quadrature::AxialSymmetry)) {
               break;
             } else {
               return false;
             }
+          } else {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+      case Basis::HalfFourier: {
+        if constexpr (Dim == 3) {
+          if (d == 1 and quadrature == Quadrature::Equiangular and
+              (bases[0] == Basis::Legendre or bases[0] == Basis::ZernikeB1 or
+               bases[0] == Basis::Chebyshev) and
+              bases[2] == Basis::Cartoon) {
+            break;
           } else {
             return false;
           }
