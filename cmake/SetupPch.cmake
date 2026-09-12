@@ -45,6 +45,7 @@ target_link_libraries(
   INTERFACE
   Blaze
   Brigand
+  Catch2::Catch2
   Charmxx::charmxx
   Charmxx::pup
   HDF5::HDF5

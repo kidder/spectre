@@ -44,7 +44,12 @@
 // Include Brigand related headers
 #include <Utilities/TMPL.hpp>
 
+#include <Utilities/StdHelpers.hpp>
+#include <catch2/catch_all.hpp>
+
+#ifndef __APPLE__
 #include <charm++.h>
 #include <pup_stl.h>
+#endif
 
 #endif  // SPECTRE_PCH_HPP
