@@ -684,6 +684,7 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
           cmake --version
 
           cmake
+          -G Ninja
           -D CMAKE_C_COMPILER=${CC}
           -D CMAKE_CXX_COMPILER=${CXX}
           -D CMAKE_Fortran_COMPILER=${FC}
@@ -730,7 +731,7 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
         if: matrix.unit_tests != 'OFF'
         working-directory: build
         run: |
-          make -j${NUMBER_OF_CORES} unit-tests
+          ninja -j${NUMBER_OF_CORES} unit-tests
       - name: Run unit tests
         if: matrix.unit_tests != 'OFF' && matrix.COVERAGE != 'ON'
         working-directory: build
@@ -747,7 +748,7 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
         if: matrix.COVERAGE == 'ON'
         working-directory: build
         run: |
-          make unit-test-coverage
+          ninja -j1 unit-test-coverage
           rm -r docs/html/unit-test-coverage
       - name: Upload coverage report to codecov.io
         if: matrix.COVERAGE == 'ON'
@@ -768,7 +769,7 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
         if: matrix.CUDA == 'ON'
         working-directory: build
         run: |
-          make -j${NUMBER_OF_CORES} \
+          ninja -j${NUMBER_OF_CORES} \
             Test_DataStructures \
             Test_Tensor \
             Test_Kokkos \
@@ -797,12 +798,12 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
         if: matrix.COVERAGE != 'ON' && matrix.test_executables != 'OFF'
         working-directory: build
         run: |
-          make test-executables
+          ninja -j1 test-executables
       - name: Build Benchmark executable
         if: matrix.build_type == 'Release'
         working-directory: build
         run: |
-          make -j${NUMBER_OF_CORES} Benchmark
+          ninja -j${NUMBER_OF_CORES} Benchmark
       # Delete unused cache entries before uploading the cache
       - name: Clean up ccache
         if: github.ref == 'refs/heads/develop'
@@ -844,7 +845,7 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
         # Make sure the `install` target runs without error. We could add some
         # basic smoke tests here to make sure the installation worked.
         run: |
-          make install
+          ninja -j1 install
       - name: Print size of install directory
         if: matrix.install == 'ON'
         working-directory: /work/spectre_install
@@ -869,7 +870,7 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
             && matrix.test_executables != 'OFF'
         working-directory: build
         run: >
-          make EvolveBurgers -j${NUMBER_OF_CORES}
+          ninja EvolveBurgers -j${NUMBER_OF_CORES}
 
           if [ ! -f ./bin/EvolveBurgers ]; then
             echo "Could not find the executable EvolveBurgers";
@@ -901,6 +902,7 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
           USE_XSIMD=${{ matrix.use_xsimd }}
 
           cmake
+          -G Ninja
           -D CMAKE_C_COMPILER=${CC}
           -D CMAKE_CXX_COMPILER=${CXX}
           -D CMAKE_Fortran_COMPILER=${FC}
@@ -926,7 +928,7 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
           -D SPECTRE_FETCH_MISSING_DEPS=ON
           ..
 
-          make EvolveBurgers -j${NUMBER_OF_CORES}
+          ninja EvolveBurgers -j${NUMBER_OF_CORES}
 
           # Run on multiple cores to run both the "parse" and "execute" tests
           # simultaneously.
@@ -939,11 +941,11 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
         if: matrix.ASAN != 'ON' && matrix.CUDA != 'ON'
         working-directory: build
         run: |
-          make -j${NUMBER_OF_CORES} BundledExporter
+          ninja -j${NUMBER_OF_CORES} BundledExporter
           mkdir build-test-exporter && cd build-test-exporter
           cmake -D SPECTRE_ROOT=$GITHUB_WORKSPACE/build \
             $GITHUB_WORKSPACE/tests/Unit/IO/Exporter/BundledExporter
-          make -j${NUMBER_OF_CORES}
+          ninja -j${NUMBER_OF_CORES}
           ./TestSpectreExporter \
             $GITHUB_WORKSPACE/tests/Unit/Visualization/Python/VolTestData0.h5 \
             element_data 0 Psi 0 0 0 -0.07059806932542323
