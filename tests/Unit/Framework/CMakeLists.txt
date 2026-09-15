@@ -6,6 +6,7 @@ set(LIBRARY Framework)
 add_subdirectory(Tests)
 
 set(LIBRARY_SOURCES
+#  CheckEqual.cpp
   SetupLocalPythonEnvironment.cpp
   )
 
