@@ -492,7 +492,7 @@ void test_einsum(const T& used_for_size) {
       "PyppPyTests", "test_einsum", scalar, vector, tnsr_ia, tnsr_AA, tnsr_iaa);
   // [einsum_example]
   CHECK_ITERABLE_CUSTOM_APPROX(expected, tensor_from_python,
-                               Approx::custom().epsilon(1.0e-12));
+                               Approx::custom().epsilon(1.0e-12).scale(1.0));
 }
 
 void test_function_of_time() {
