@@ -2,5 +2,5 @@
 # See LICENSE.txt for details.
 
 add_subdirectory(Spectral)
-add_subdirectory(SphericalHarmonics)
-add_subdirectory(SpinWeightedSphericalHarmonics)
+#add_subdirectory(SphericalHarmonics)
+#add_subdirectory(SpinWeightedSphericalHarmonics)

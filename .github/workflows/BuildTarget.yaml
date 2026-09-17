@@ -213,7 +213,7 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
           # We run ctest -L unit before build test-executables to make
           # sure that all the unit tests are actually built by the
           # unit-tests target.
-          ctest -j${NUM_CORES} -L unit
+          ctest -j${NUM_CORES} -L unit --output-on-failure
       # Avoid running out of disk space by cleaning up the build directory
       - name: Clean up unit tests
         working-directory: build

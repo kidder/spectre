@@ -40,16 +40,20 @@ void test_exponential_filter(const double alpha, const unsigned half_power,
     for (size_t i = 0; i < num_pts; ++i) {
       initial_modal_coeffs[i] = static_cast<double>(i) + 1.0;
     }
+    CAPTURE(initial_modal_coeffs);
     const DataVector initial_nodal_coeffs =
         to_nodal_coefficients(initial_modal_coeffs, mesh);
+    CAPTURE(initial_nodal_coeffs);
     DataVector filtered_nodal_coeffs(num_pts);
     const Matrix filter_matrix =
         Spectral::filtering::exponential_filter(mesh, alpha, half_power);
+    CAPTURE(filter_matrix);
     dgemv_('N', num_pts, num_pts, 1., filter_matrix.data(),
            filter_matrix.spacing(), initial_nodal_coeffs.data(), 1, 0.0,
            filtered_nodal_coeffs.data(), 1);
     const ModalVector filtered_modal_coeffs =
         to_modal_coefficients(filtered_nodal_coeffs, mesh);
+    CAPTURE(filtered_modal_coeffs);
     const double basis_order = static_cast<double>(num_pts) - 1;
     for (size_t i = 0; i < num_pts; ++i) {
       CAPTURE(i);
@@ -57,9 +61,10 @@ void test_exponential_filter(const double alpha, const unsigned half_power,
         // In the case of only 1 coefficient there should be no filtering.
         CHECK(filtered_modal_coeffs[i] == initial_modal_coeffs[i]);
       } else {
-        CHECK(filtered_modal_coeffs[i] ==
-              local_approx(initial_modal_coeffs[i] *
-                           exp(-alpha * pow(i / basis_order, 2 * half_power))));
+        REQUIRE(
+            filtered_modal_coeffs[i] ==
+            local_approx(initial_modal_coeffs[i] *
+                         exp(-alpha * pow(i / basis_order, 2 * half_power))));
       }
     }
   }
@@ -162,11 +167,14 @@ void test_zero_lowest_modes() {
       for (size_t i = 0; i < num_pts; ++i) {
         initial_modal_coeffs[i] = static_cast<double>(i) + 1.0;
       }
+      CAPTURE(initial_modal_coeffs);
       const DataVector initial_nodal_coeffs =
           to_nodal_coefficients(initial_modal_coeffs, mesh);
+      CAPTURE(initial_nodal_coeffs);
       DataVector filtered_nodal_coeffs(num_pts);
       const Matrix& filter_matrix = Spectral::filtering::zero_lowest_modes(
           mesh, number_of_modes_to_filter);
+      CAPTURE(filter_matrix);
       dgemv_('N', num_pts, num_pts, 1., filter_matrix.data(),
              filter_matrix.spacing(), initial_nodal_coeffs.data(), 1, 0.0,
              filtered_nodal_coeffs.data(), 1);
@@ -175,10 +183,10 @@ void test_zero_lowest_modes() {
       for (size_t i = 0; i < num_pts; ++i) {
         CAPTURE(i);
         if (i < number_of_modes_to_filter) {
-          CHECK(fabs(filtered_modal_coeffs[i]) < 1.0e-11);
+          REQUIRE(fabs(filtered_modal_coeffs[i]) < 1.0e-11);
         } else {
-          CHECK(local_approx(filtered_modal_coeffs[i]) ==
-                initial_modal_coeffs[i]);
+          REQUIRE(local_approx(filtered_modal_coeffs[i]) ==
+                  initial_modal_coeffs[i]);
         }
       }
     }
@@ -263,8 +271,10 @@ void test_zero_highest_modes() {
       for (size_t i = 0; i < num_pts; ++i) {
         initial_modal_coeffs[i] = static_cast<double>(i) + 1.0;
       }
+      CAPTURE(initial_modal_coeffs);
       const DataVector initial_nodal_coeffs =
           to_nodal_coefficients(initial_modal_coeffs, mesh);
+      CAPTURE(initial_nodal_coeffs);
       DataVector filtered_nodal_coeffs(num_pts);
       const Matrix& filter_matrix = Spectral::filtering::zero_highest_modes(
           mesh, number_of_modes_to_filter);
@@ -276,10 +286,10 @@ void test_zero_highest_modes() {
       for (size_t i = 0; i < num_pts; ++i) {
         CAPTURE(i);
         if (i + number_of_modes_to_filter >= num_pts) {
-          CHECK(filtered_modal_coeffs[i] == local_approx(0.0));
+          REQUIRE(filtered_modal_coeffs[i] == local_approx(0.0));
         } else {
-          CHECK(local_approx(filtered_modal_coeffs[i]) ==
-                initial_modal_coeffs[i]);
+          REQUIRE(local_approx(filtered_modal_coeffs[i]) ==
+                  initial_modal_coeffs[i]);
         }
       }
     }

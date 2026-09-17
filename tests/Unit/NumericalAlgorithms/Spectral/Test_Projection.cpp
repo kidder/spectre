@@ -144,9 +144,9 @@ void test_p_mortar_to_element() {
                 // This integral might not be evaluated exactly for the
                 // highest order polynomials, but it will correctly
                 // determine orthogonality.
-                CHECK(definite_integral(
-                          error * pow(points_source, orthogonality_test_order),
-                          mesh_source) == approx(0.));
+                REQUIRE(definite_integral(error * pow(points_source,
+                                                      orthogonality_test_order),
+                                          mesh_source) == approx(0.));
               }
             } else {
               // The function can be represented exactly in both spaces.
