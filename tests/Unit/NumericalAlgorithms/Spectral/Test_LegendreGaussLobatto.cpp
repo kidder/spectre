@@ -352,6 +352,22 @@ void test_nodal_to_modal_matrix(const size_t num_points,
       Spectral::nodal_to_modal_matrix<Spectral::Basis::Legendre,
                                       Spectral::Quadrature::GaussLobatto>(
           num_points);
+  const auto& inv_matrix =
+      Spectral::modal_to_nodal_matrix<Spectral::Basis::Legendre,
+                                      Spectral::Quadrature::GaussLobatto>(
+          num_points);
+
+  const Matrix e_i = matrix * inv_matrix;
+  for (size_t i = 0; i < num_points; ++i) {
+    for (size_t j = 0; j < num_points; ++j) {
+      const auto expected = i == j ? 1.0 : 0.0;
+      CHECK(e_i(i, j) == approx(expected));
+    }
+  }
+  const Matrix e_inv_matrix = inv(matrix);
+  CHECK_ITERABLE_APPROX(e_inv_matrix, inv_matrix);
+  const Matrix e_inv_inv_matrix = inv(inv_matrix);
+  CHECK_ITERABLE_APPROX(e_inv_inv_matrix, matrix);
   CHECK_ITERABLE_APPROX(expected_matrix, matrix);
 }
 
