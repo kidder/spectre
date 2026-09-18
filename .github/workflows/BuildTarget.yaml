@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gcc_version: [10, 11, 12, 13, 14, 15]
+        gcc_version: [13, 14, 15, 16]
         build_type: [Debug, Release]
         SPECTRE_DEBUG_Og: [ON]
         ENABLE_OPENMP: [ON]
@@ -206,9 +206,6 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
       - name: Run unit tests
         if: matrix.unit_tests != 'OFF' && matrix.COVERAGE != 'ON'
         working-directory: build
-        env:
-          OPENBLAS_NUM_THREADS: 1
-          OMP_NUM_THREADS: 1
         run: |
           # We get occasional random timeouts, repeat tests to see if
           # it is a random timeout or systematic.
@@ -216,7 +213,7 @@ ${{ matrix.build_type }}-pch-${{ matrix.use_pch || 'ON' }}"
           # We run ctest -L unit before build test-executables to make
           # sure that all the unit tests are actually built by the
           # unit-tests target.
-          ctest -j${NUM_CORES} -L unit --output-on-failure
+          ctest --verbose -j${NUM_CORES} -L unit
       # Avoid running out of disk space by cleaning up the build directory
       - name: Clean up unit tests
         working-directory: build

@@ -12,6 +12,7 @@
 #include "Informer/InfoFromBuild.hpp"
 #include "Parallel/InitializationFunctions.hpp"
 #include "Parallel/Printf/Printf.hpp"
+#include "Utilities/Blas.hpp"
 #include "Utilities/ErrorHandling/Error.hpp"
 #include "Utilities/ErrorHandling/FloatingPointExceptions.hpp"
 #include "Utilities/ErrorHandling/SegfaultHandler.hpp"
@@ -40,6 +41,7 @@ int main(int argc, char* argv[]) {
 #endif
   setup_error_handling();
   setup_memory_allocation_failure_reporting();
+  disable_openblas_multithreading();
   Parallel::printf("%s", info_from_build().c_str());
   enable_floating_point_exceptions();
   enable_segfault_handler();
