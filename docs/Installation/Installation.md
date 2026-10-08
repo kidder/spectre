@@ -508,9 +508,6 @@ Here are a few notes:
 - Once you cloned the [Charm++ repository](https://github.com/UIUC-PPL/charm),
   run `git checkout v8.0.0` to switch to a supported, stable release of
   Charm++.
-- Apply the appropriate patch (if there is one) for the version from
-  `${SPECTRE_ROOT}/support/Charm`. For example, if you have Charm++ v7.0.0
-  then the patch will be `v7.0.0.patch`.
 - Choose the `LIBS` target to compile. This is needed so that we can support the
   more sophisticated load balancers in SpECTRE executables.
 - On a personal machine the correct target architecture is likely

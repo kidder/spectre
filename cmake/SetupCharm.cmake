@@ -1,7 +1,7 @@
 # Distributed under the MIT License.
 # See LICENSE.txt for details.
 
-set(SPECTRE_REQUIRED_CHARM_VERSION 7.0.0)
+set(SPECTRE_REQUIRED_CHARM_VERSION 8.0.0)
 
 option(USE_SCOTCH_LB "Use the charm++ ScotchLB module" OFF)
 
@@ -38,10 +38,6 @@ find_package(Charm ${SPECTRE_REQUIRED_CHARM_VERSION} REQUIRED
   EveryLB
   ${SCOTCHLB_COMPONENT}
   )
-if(CHARM_VERSION VERSION_LESS 8.0.0)
-  message(NOTICE "Charm++ versions less than 8.0.0 have known bugs with \
-element creation.  Dynamic h-refinement is disabled.")
-endif()
 
 if (USE_SCOTCH_LB)
   target_link_libraries(Charmxx::charmxx INTERFACE Scotch)
@@ -91,25 +87,3 @@ configure_file(
 )
 
 include(SetupCharmModuleFunctions)
-
-# Make sure Charm++ was patched. If not you can get thread local storage errors
-# when loading the python bindings.
-if(NOT APPLE AND CHARM_VERSION VERSION_EQUAL 7.0.0 AND BUILD_PYTHON_BINDINGS)
-  # Check that the patch was applied:
-  set(CHARM_CHECK_FILE "${CHARM_INCLUDE_DIR}/conv-mach-opt.sh")
-  if (EXISTS ${CHARM_CHECK_FILE})
-    set(_CHARM_CMAKE_FILE_TO_CHECK ${CHARM_CHECK_FILE})
-    file(READ ${_CHARM_CMAKE_FILE_TO_CHECK} FILE_CONTENTS)
-    set(_EXPECTED_TLS_STRING "-ftls-model=initial-exec")
-    string(FIND "${FILE_CONTENTS}"
-      ${_EXPECTED_TLS_STRING} _LOCATION_OF_TLS)
-    if (NOT ${_LOCATION_OF_TLS} EQUAL -1)
-      message(FATAL_ERROR "Found -ftls-model=initial-exec flag. "
-        "It looks like you forgot to apply the Charm++ patch. "
-        "This is necessary when using the python bindings.")
-    endif()
-  else()
-    message(STATUS "Unable to check if Charm++ was patched. "
-      "Missing file ${CHARM_CHECK_FILE}")
-  endif()
-endif()

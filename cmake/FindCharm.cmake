@@ -21,7 +21,7 @@
 # This module supports CMake "components" to load additional Charm++ modules.
 # You can load additional Charm++ modules like this:
 #
-#   find_package(Charm 7.0.0 COMPONENTS EveryLB)
+#   find_package(Charm 8.0.0 COMPONENTS EveryLB)
 #
 # This module exposes the following targets:
 #
@@ -128,8 +128,7 @@ if(NOT CHARM_BUILDING_BLOCKS)
       )
   else()
     message(FATAL_ERROR "Failed retrieving Charm++ building blocks with "
-      "command:\n  ${CHARM_BUILDING_BLOCKS_CMD}\nPlease make sure the Charm++ "
-      "version is at least 6.9.0. Error message:\n"
+      "command:\n  ${CHARM_BUILDING_BLOCKS_CMD}\nError message:\n"
       "${CHARM_BUILDING_BLOCKS_ERROR}")
   endif()
 endif()
@@ -188,53 +187,30 @@ endif()
 
 # Find version file
 if(EXISTS "${CHARM_INCLUDE_DIR}/charm-version.h")
-  set(CHARM_VERSION_FILE_VERSION "6_11")
   set(CHARM_VERSION_FILE_LOCATION "${CHARM_INCLUDE_DIR}/charm-version.h")
-elseif(EXISTS "${CHARM_INCLUDE_DIR}/VERSION")
-  set(CHARM_VERSION_FILE_VERSION "pre_6_11")
-  set(CHARM_VERSION_FILE_LOCATION "${CHARM_INCLUDE_DIR}/VERSION")
-elseif(EXISTS "${CHARM_ROOT}/VERSION")
-  set(CHARM_VERSION_FILE_VERSION "pre_6_11")
-  set(CHARM_VERSION_FILE_LOCATION "${CHARM_ROOT}/VERSION")
 else()
   message(FATAL_ERROR "Failed to find Charm++ version file")
 endif()
 
 # Parse version from file
 file(READ "${CHARM_VERSION_FILE_LOCATION}" CHARM_VERSION_FILE)
-if(CHARM_VERSION_FILE_VERSION STREQUAL "6_11")
-  # Since version 6.11 the file is C++-compatible
-  if(CHARM_VERSION_FILE MATCHES "#define CHARM_VERSION_MAJOR ([0-9]+)")
-    set(CHARM_VERSION_MAJOR ${CMAKE_MATCH_1})
-  else()
-    message(FATAL_ERROR "Could not parse CHARM_VERSION_MAJOR from file: "
-      "${CHARM_VERSION_FILE_LOCATION}")
-  endif()
-  if(CHARM_VERSION_FILE MATCHES "#define CHARM_VERSION_MINOR ([0-9]+)")
-    set(CHARM_VERSION_MINOR ${CMAKE_MATCH_1})
-  else()
-    message(FATAL_ERROR "Could not parse CHARM_VERSION_MINOR from file: "
-      "${CHARM_VERSION_FILE_LOCATION}")
-  endif()
-  if(CHARM_VERSION_FILE MATCHES "#define CHARM_VERSION_PATCH ([0-9]+)")
-    set(CHARM_VERSION_PATCH ${CMAKE_MATCH_1})
-  else()
-    message(FATAL_ERROR "Could not parse CHARM_VERSION_PATCH from file: "
-      "${CHARM_VERSION_FILE_LOCATION}")
-  endif()
-elseif(CHARM_VERSION_FILE_VERSION STREQUAL "pre_6_11")
-  # Before version 6.11 the file contains only a string
-  string(REGEX REPLACE "\n" "" CHARM_VERSION_FILE "${CHARM_VERSION_FILE}")
-  string(
-    REGEX REPLACE
-    "([0-9])1([0-9])0([0-9])"
-    "\\1;1\\2;\\3"
-    CHARM_VERSIONS_PARSED
-    ${CHARM_VERSION_FILE}
-    )
-  list(GET CHARM_VERSIONS_PARSED 0 CHARM_VERSION_MAJOR)
-  list(GET CHARM_VERSIONS_PARSED 1 CHARM_VERSION_MINOR)
-  list(GET CHARM_VERSIONS_PARSED 2 CHARM_VERSION_PATCH)
+if(CHARM_VERSION_FILE MATCHES "#define CHARM_VERSION_MAJOR ([0-9]+)")
+  set(CHARM_VERSION_MAJOR ${CMAKE_MATCH_1})
+else()
+  message(FATAL_ERROR "Could not parse CHARM_VERSION_MAJOR from file: "
+    "${CHARM_VERSION_FILE_LOCATION}")
+endif()
+if(CHARM_VERSION_FILE MATCHES "#define CHARM_VERSION_MINOR ([0-9]+)")
+  set(CHARM_VERSION_MINOR ${CMAKE_MATCH_1})
+else()
+  message(FATAL_ERROR "Could not parse CHARM_VERSION_MINOR from file: "
+    "${CHARM_VERSION_FILE_LOCATION}")
+endif()
+if(CHARM_VERSION_FILE MATCHES "#define CHARM_VERSION_PATCH ([0-9]+)")
+  set(CHARM_VERSION_PATCH ${CMAKE_MATCH_1})
+else()
+  message(FATAL_ERROR "Could not parse CHARM_VERSION_PATCH from file: "
+    "${CHARM_VERSION_FILE_LOCATION}")
 endif()
 set(CHARM_VERSION
   "${CHARM_VERSION_MAJOR}.${CHARM_VERSION_MINOR}.${CHARM_VERSION_PATCH}")
@@ -317,17 +293,11 @@ have loaded the appropriate modules.")
   endif()
   list(APPEND CHARM_LIBS ${CHARM_LIB_${CHARM_LIB_NAME}})
   # Collect libs for the PUP serialization library so we can link it separately
-  # if we want. The PUP functionality is in `conv-util` in Charm++ 6.10.2 and
-  # in the combined `converse` lib in later versions.
-  if(CHARM_LIB_NAME STREQUAL conv-util OR CHARM_LIB_NAME STREQUAL converse)
+  # if we want.
+  if(CHARM_LIB_NAME STREQUAL converse)
     list(APPEND PUP_LIBS ${CHARM_LIB_${CHARM_LIB_NAME}})
   endif()
 endforeach()
-# - Extract libraries that are linked as object files (`conv-static` in Charm++
-#   6.10.2).
-set(CHARM_LIB_conv-static ${CHARM_LDXX_FLAGS})
-list(FILTER CHARM_LIB_conv-static INCLUDE REGEX "conv-static.o$")
-list(FILTER CHARM_LDXX_FLAGS EXCLUDE REGEX "conv-static.o$")
 
 # Report remaining flags that will be ignored. They have been used to compile
 # Charm++ but may not be compatible with the compiler that the SpECTRE build is
@@ -406,7 +376,6 @@ target_link_libraries(
   INTERFACE
   Charmxx::charmxx
   ${CHARM_LIB_ckmain}
-  ${CHARM_LIB_conv-static}
   )
 # Add a preprocessing definition to indicate that a Charm++ main module is
 # available. This is used to conditionally compile Charm++-specific code
